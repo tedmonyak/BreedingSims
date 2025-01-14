@@ -163,7 +163,6 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 if (!dir.exists(save_dir)) dir.create(save_dir)
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 
-
 fname <- file.path(save_dir, "traitvalue_vs_fitness.pdf")
 pdf(fname)
 par(mar = c(5, 5, 3, 5) + 0.3)
@@ -192,7 +191,7 @@ population w/standing genetic variation
 ```{r}
 n.popSize = 200
 n.segSites = 100
-n.gens <- 10
+n.gens <- 20
 
 founders = runMacs(
    nInd=n.popSize,
@@ -388,6 +387,7 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 if (!dir.exists(save_dir)) dir.create(save_dir)
 fname <- file.path(save_dir, paste0("adaptivewalk_", plotType, ".html"))
 htmlwidgets::saveWidget(as_widget(p), fname)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 ```
 
 This block runs 100 monte carlo simulations of different subpopulations to determine the average effect size of alleles that are fixed
@@ -537,7 +537,7 @@ htmlwidgets::saveWidget(as_widget(p), fname)
 ggplot2::ggsave(filename = "average_effect_size.pdf",
                 path=save_dir,
                 device = "pdf")
-
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 ```
 
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
@@ -647,6 +647,7 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 if (!dir.exists(save_dir)) dir.create(save_dir)
 fname <- file.path(save_dir, "adaptivewalks.html")
 htmlwidgets::saveWidget(as_widget(p), fname)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 
 fname <- file.path(save_dir, "traitarchitecture.pdf")
 pdf(fname)
@@ -743,6 +744,7 @@ save_dir <- file.path(output_dir, "EliteVSRIL")
 if (!dir.exists(save_dir)) dir.create(save_dir)
 save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 
 fname <- file.path(save_dir, "EliteVSRil.pdf")
 ggplot2::ggsave(filename = fname,
@@ -797,6 +799,7 @@ getSigQtl <- function(RIL, parentA, parentB, savePlot=FALSE) {
     fname <- file.path(save_dir, "PCA.pdf")
     ggplot2::ggsave(filename = fname,
                     device = "pdf")
+    write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
   }
   return (nrow(sigQtl))
 }
@@ -855,6 +858,7 @@ if (!dir.exists(save_dir)) dir.create(save_dir)
 fname <- file.path(save_dir, "significantqtl.pdf")
 ggplot2::ggsave(filename = fname,
                 device = "pdf")
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 ```
 
 GWAS
