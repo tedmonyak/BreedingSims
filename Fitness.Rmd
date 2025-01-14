@@ -143,7 +143,7 @@ SP <- SimParam$new(founders)
 SP$addTraitA(
   nQtlPerChr=n.qtlPerChr,
   mean=n.initTraitVal,
-  var=n.rate,
+  var=n.var,
 )
 SP$setVarE(h2=n.h2)
 pop <- newPop(founders, simParam=SP)
@@ -180,136 +180,63 @@ legend("right",
 dev.off()
 ```
 
-Out of alleles left in the population, how many of them would increase fitness?
-TODO:
-Next: how does this change with size of allele? Look at editGenomeTopQtl()
-Next: how does size of 'fitness delta' change over generations?
-Simualate mutations for a single individual to figure out P(allelic substitution is favorable) - should reflect FKO
-P(mutation gets fixed) - show that this matches Kimura
-Compare adaptive walks for DH/inbred population where there are new mutations VS
-population w/standing genetic variation
+Plot different trait architectures
 ```{r}
-n.popSize = 200
-n.segSites = 100
-n.gens <- 20
+source("GlobalVariables.R")
 
-founders = runMacs(
-   nInd=n.popSize,
-   nChr=n.chr,
-   segSites=n.segSites
-)
-SP <- SimParam$new(founders)
-SP$addTraitA(mean=n.initTraitVal, var=n.rate, nQtlPerChr=n.qtlPerChr, gamma = TRUE, shape = n.shape)
-SP$addTraitA(mean=n.initTraitVal, var=n.rate, nQtlPerChr=n.qtlPerChr, gamma = TRUE, shape = n.shape)
-SP$setVarE(h2=c(n.h2,n.h2))
-pop <- newPop(founders, simParam = SP)
+methodType <- "Fitness"
+n.popSize <- 200
+n.qtlPerChr <- 5
+n.initTraitVal <- 1
+n.var <- 0.1
+n.shape <- 1
 
-fitFunc <- twoTraitFitFunc
+source("CreateFounderPop.R")
 
-cols = colnames(pullSegSiteGeno(pop))
-df <- data.frame(gen=rep(1:n.gens),
-                 fitness=numeric(n.gens),
-                 traitVal1=numeric(n.gens),
-                 traitVal2=numeric(n.gens),
-                 percFitInc=numeric(n.gens),
-                 segAlleles=numeric(n.gens))
+plotTraitArchitecture(foundingPop, methodType, twoTraitFitFunc)
 
-for (gen in 1:n.gens) {
-  print(gen)
-  mean(fitFunc(gv(pop)))
-  df$fitness[gen] <- mean(fitFunc(gv(pop)))
-  df$traitVal1[gen] <- meanG(pop)[1]
-  df$traitVal2[gen] <- meanG(pop)[2]
-  num_het_loci = 0
-  num_inc = 0
-  geno <- pullSegSiteGeno(pop)
-  cols <- colnames(geno)
-  nLoci <- ncol(geno)
-  for (l in 1:nLoci) {
-    id <- cols[l]
-    strs = unlist(strsplit(cols[l], "_"))
-    chr = strtoi(strs[1])
-    site = strtoi(strs[2])
-    locus = geno[,l]
-    e <- getEffectSize(locus, id, fitFunc, pop, "MethodB")
-    if (!is.na(e)) {
-      num_het_loci <- num_het_loci + 1
-      if (e > 0) {
-        num_inc <- num_inc + 1
-      }
-    }
-  }
-  
-  if (num_het_loci == 0) {
-    perc <- 0
-  } else {
-    perc <- (num_inc / num_het_loci)
-  }
-  df$segAlleles[gen] <- num_het_loci
-  df$percFitInc[gen] <- perc
-  pop <- selectCross(pop=pop, trait=fitFunc, nInd=nInd(pop)*n.selProp, nCrosses=nInd(pop))
-}
-
-save_dir <- file.path(output_dir, "BeneficialAlleles")
+save_dir <- file.path(output_dir, "TraitArchitecture")
 if (!dir.exists(save_dir)) dir.create(save_dir)
 save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 if (!dir.exists(save_dir)) dir.create(save_dir)
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 
-fname <- file.path(save_dir, "beneficialalleles.pdf")
-pdf(fname)
+ggplot2::ggsave(filename = paste0("traitarchitecture_", methodType, ".pdf"),
+                path=save_dir,
+                device = "pdf")
 
-par(mar = c(5, 5, 3, 5) + 0.3)
-plot(df$gen, df$fitness, type="l", lwd = "3", col=2, xlab = "Generation", ylab = "Fitness")
-par(new = TRUE) 
-plot(df$gen, df$percFitInc, type="l", lwd = "3", col = 3, axes = FALSE, xlab = "", ylab = "") 
-axis(side = 4, at = pretty(range(df$percFitInc)))
-mtext("% of Segregating alleles that are Beneficial", side = 4, line = 3)
-par(xpd=TRUE)
-legend("right",
-  c("Fitness", "% Alleles"),
-       lty = 1,
-       lwd = 3,
-       col = 2:3)
-dev.off()
+p <- plot3dPopulationFitness(foundingPop, calculateFitnessTwoTrait)
 
-#ggplot(data=df, aes(x=gen, y=segAlleles)) +
-#  geom_line() +
-#  labs(x = "Generation", y = "Num Segregating Alleles")
-
+fname <- file.path(save_dir, "3dpopulationfitness.html")
+htmlwidgets::saveWidget(as_widget(p), fname)
 ```
 
 Simulate several adaptive walks with different population sizes
 ```{r}
-n.gens = 50
-n.popSizes = c(100,500,1000)
-n.segSites = 500
+source("GlobalVariables.R")
+n.gens <- 50
+n.popSizes <- c(40,200,1000)
+n.qtlPerChr <- 5
+n.segSites <- 1000
+n.selProp <- 0.8
+n.var <- 0.1
+addSnpChip <- FALSE
 
 fig <- plot_ly()
 fit_df <- data.frame(gen=1:n.gens,
                    fitness=numeric(n.gens),
                    traitValA=numeric(n.gens),
                    traitValB=numeric(n.gens))
+
 for (p in c(1:length(n.popSizes))) {
-  n.popSize = n.popSizes[p]
+  n.popSize <- n.popSizes[p]
   print(n.popSize)
-  founders = runMacs(
-     nInd=n.popSize,
-     nChr=n.chr,
-     segSites=n.segSites
-  )
-  SP <- SimParam$new(founders)
-  SP$addTraitA(mean=c(n.initTraitVal,n.initTraitVal), var=c(n.shape,n.shape), nQtlPerChr=n.qtlPerChr)
-  
-  SP$setVarE(h2=c(n.h2,n.h2))
-  foundingPop <- newPop(founders, simParam = SP)
-  
+  source("CreateFounderPop.R")
   pop <- foundingPop
-  
   for(gen in 1:n.gens) {
-    fit_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
-    fit_df$traitValA[gen] <- meanP(pop)[1]
-    fit_df$traitValB[gen] <- meanP(pop)[2]
+    fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
+    fit_df$traitValA[gen] <- meanG(pop)[1]
+    fit_df$traitValB[gen] <- meanG(pop)[2]
     pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*(n.selProp), nCrosses=n.popSize)
   }
   
@@ -324,8 +251,9 @@ for (p in c(1:length(n.popSizes))) {
     mode = 'lines',
     opacity = 1,
     color = p,
-    line = list(width = 10)
+    line = list(width = 5)
   )
+  
   
 }
 
@@ -345,6 +273,8 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 
 fname <- file.path(save_dir, paste0("populationSizes_", n.popSizes[1], ",", n.popSizes[2], ",", n.popSizes[3], ".html"))
 htmlwidgets::saveWidget(as_widget(fig), fname)  
+
+fig
 ```
 
 Overlay an adaptive walk over a fitness landscape
@@ -388,6 +318,105 @@ if (!dir.exists(save_dir)) dir.create(save_dir)
 fname <- file.path(save_dir, paste0("adaptivewalk_", plotType, ".html"))
 htmlwidgets::saveWidget(as_widget(p), fname)
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+```
+
+Out of alleles left in the population, how many of them would increase fitness?
+TODO:
+Next: how does this change with size of allele? Look at editGenomeTopQtl()
+Next: how does size of 'fitness delta' change over generations?
+Simualate mutations for a single individual to figure out P(allelic substitution is favorable) - should reflect FKO
+P(mutation gets fixed) - show that this matches Kimura
+Compare adaptive walks for DH/inbred population where there are new mutations VS
+population w/standing genetic variation
+```{r}
+source("GlobalVariables.R")
+n.popSize = 1000
+n.gens <- 200
+n.qtlPerChr <- 5
+n.margin <- -0.1
+n.segSites <- 1000
+n.selProp <- 0.8
+addSnpChip <- FALSE
+
+source("CreateFounderPop.R")
+
+pop <- foundingPop
+df <- data.frame(gen=c(),
+                 fitness=c(),
+                 traitVal1=c(),
+                 traitVal2=c(),
+                 percFitInc=c(),
+                 segAlleles=c(),
+                 segQtl=c())
+
+for (gen in 1:n.gens) {
+  print(gen)
+  numHetLoci = 0
+  numHetQtl = 0
+  numInc = 0
+  segSiteGeno <- pullSegSiteGeno(pop)
+  qtlGeno <- getUniqueQtl(pop)
+  qtlLoci <- colnames(qtlGeno)
+  loci <- colnames(segSiteGeno)
+  nLoci <- ncol(segSiteGeno)
+  for (l in 1:ncol(segSiteGeno)) {
+    id <- loci[l]
+    locus = segSiteGeno[,l]
+    if (hetLocus(locus)) {
+      numHetLoci <- numHetLoci + 1
+      if (id %in% qtlLoci) {
+        numHetQtl <- numHetQtl + 1
+        numInc <- numInc + 1
+      }
+    }
+    
+  }
+  
+  if (numHetLoci == 0) {
+    perc <- 0
+  } else {
+    perc <- (numInc / numHetLoci)
+  }
+  df <- rbind(df, data.frame(gen=gen,
+                             fitness=mean(twoTraitFitFunc(gv(pop))),
+                             traitVal1=meanG(pop)[1],
+                             traitVal2=meanG(pop)[2],
+                             percFitInc=perc,
+                             segAlleles=numHetLoci,
+                             segQtl=numHetQtl))
+  if (mean(twoTraitFitFunc(gv(pop))) >= n.margin) {
+    break
+  }
+  pop <- selectCross(pop=pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.selProp, nCrosses=nInd(pop))
+}
+
+save_dir <- file.path(output_dir, "BeneficialAlleles")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+fname <- file.path(save_dir, "beneficialalleles.pdf")
+pdf(fname)
+
+par(mar = c(5, 5, 3, 5) + 0.3)
+plot(df$gen, df$fitness, type="l", lwd = "3", col=2, xlab = "Generation", ylab = "Fitness")
+par(new = TRUE) 
+plot(df$gen, df$percFitInc, type="l", lwd = "3", col = 3, axes = FALSE, xlab = "", ylab = "") 
+axis(side = 4, at = pretty(range(df$percFitInc)))
+mtext("% of Segregating alleles that are Beneficial", side = 4, line = 3)
+par(xpd=TRUE)
+legend("right",
+  c("Fitness", "% Alleles"),
+       lty = 1,
+       lwd = 3,
+       col = 2:3)
+dev.off()
+
+#ggplot(data=df, aes(x=gen, y=segAlleles)) +
+#  geom_line() +
+#  labs(x = "Generation", y = "Num Segregating Alleles")
+
 ```
 
 This block runs 100 monte carlo simulations of different subpopulations to determine the average effect size of alleles that are fixed
@@ -455,27 +484,12 @@ for (s in 1:n.sims) {
     subPop_df$traitValB[gen] <- meanP(subPop)[2]
     prevPop <- subPop
     subPop <- selectCross(subPop, trait=twoTraitFitFunc, nInd=nInd(subPop)*n.selProp, nCrosses=nInd(subPop))
-    prevGeno <- pullQtlGeno(prevPop,1)
-    if (prevPop@nTraits > 1) {
-      for (t in 2:prevPop@nTraits) {
-        prevGeno <- cbind(prevGeno, pullQtlGeno(prevPop, trait=t))
-      }
-    }
-    prevGeno <- prevGeno[, !duplicated(colnames(prevGeno))]
-    newGeno <- pullQtlGeno(subPop,1)
-    if (subPop@nTraits > 1) {
-      for (t in 2:subPop@nTraits) {
-        newGeno <- cbind(newGeno, pullQtlGeno(subPop, trait=t))
-      }
-    }
-    newGeno <- newGeno[, !duplicated(colnames(newGeno))]
+    prevGeno <- getUniqueQtl(prevPop)
+    newGeno <- getUniqueQtl(subPop)
     cols <- colnames(newGeno)
     n.loci <- length(cols)
     for (l in 1:n.loci) {
       id <- cols[l]
-      #strs = unlist(strsplit(id, "_"))
-      #chr = strtoi(strs[1])
-      #site = strtoi(strs[2])
       prevLocus = prevGeno[,l]
       newLocus = newGeno[,l]
       if (hetLocus(prevLocus) && !hetLocus(newLocus)) {
@@ -563,12 +577,12 @@ popB <- selectInd(pop, use="rand", nInd=n.subPopSize)
 
 popA_df <- data.frame(gen=c(1),
                  fitness=c(mean(twoTraitFitFunc(pheno(popA)))),
-                 traitValA=c(traitValA=meanP(popA)[1]),
-                 traitValB=c(traitValB=meanP(popA)[2]))
+                 traitValA=c(meanP(popA)[1]),
+                 traitValB=c(meanP(popA)[2]))
 popB_df <- data.frame(gen=c(1),
                  fitness=c(mean(twoTraitFitFunc(pheno(popB)))),
-                 traitValA=c(traitValA=meanP(popB)[1]),
-                 traitValB=c(traitValB=meanP(popB)[2]))
+                 traitValA=c(meanP(popB)[1]),
+                 traitValB=c(meanP(popB)[2]))
 
 for (gen in 1:n.gens) {
   if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
@@ -754,7 +768,7 @@ ggplot2::ggsave(filename = fname,
 Pull out individuals from each population and cross them
 Create RILs
 ```{r}
-getSigQtl <- function(RIL, parentA, parentB, savePlot=FALSE) {
+getSigQtl <- function(RIL, parentA, parentB) {
   cross <- getCross(RIL, parentA, parentB, "riself")
   cross <- drop.nullmarkers(cross)
   phes <- phenames(cross)[1:2]
@@ -768,7 +782,7 @@ getSigQtl <- function(RIL, parentA, parentB, savePlot=FALSE) {
                        returnQTLModel=FALSE,
                        alpha=0.05,
                        controlAcrossCol=TRUE)
-  if (savePlot) {
+  if (saveQtlPlots) {
     save_dir <- file.path(output_dir, "QtlMapping")
     if (!dir.exists(save_dir)) dir.create(save_dir)
     save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
@@ -812,7 +826,8 @@ RIL <- res[1:(length(res)-2)]
 parentA <- res[length(res)-1]
 parentB <- res[length(res)]
 
-getSigQtl(RIL, parentA, parentB, savePlot=TRUE)
+saveQtlPlots <- TRUE
+getSigQtl(RIL, parentA, parentB)
 ```
 
 QTL Simulation

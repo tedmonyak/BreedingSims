@@ -5,9 +5,9 @@ n.segSites = 1000
 n.markers = 1000
 n.qtlPerChr = 5
 n.margin <- -0.1
-n.h2 <- 0.7
+n.h2 <- 0.6
 n.initTraitVal <- 1
-n.rate <- 0.1
+n.var <- 0.1
 n.shape <- 1
 n.burnInSelProp <- 0.95
 n.selProp <- 0.8
@@ -23,6 +23,11 @@ n.mappingMethod <- "hk"
 n.errorProb <- 0.001
 n.step <- 1
 
+# 
+addSnpChip <- TRUE
+basicPop <- TRUE
+saveQtlPlots <- FALSE
+
 
 getParams <- function() {
   n.df <- data.frame(
@@ -35,7 +40,7 @@ getParams <- function() {
     margin=n.margin,
     h2=n.h2,
     initTraitVal=n.initTraitVal,
-    rate=n.rate,
+    var=n.var,
     shape=n.shape,
     burnInSelProp=n.burnInSelProp,
     selProp=n.selProp,
@@ -44,7 +49,10 @@ getParams <- function() {
     sims=n.sims,
     chr=n.chr,
     RILFams=n.RILFams,
-    indPerRILFam=n.indPerRILFam
+    indPerRILFam=n.indPerRILFam,
+    mappingMethod=n.mappingMethod,
+    errorProb=n.errorProb,
+    step=n.step
   )
   (t(n.df))
 }

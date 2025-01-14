@@ -13,13 +13,13 @@ theme <- theme(plot.background = ggplot2::element_blank(),
 # Expects a dataframe with 2 columns:
 # traitValA, traitValB (for type "CONTOUR"),
 # with a 3rd column (fitness) (for type "SURFACE")
-overlayWalkOnLandscape <-function(df,
-                                  type="CONTOUR",
-                                  fitCalc,
-                                  traitAMin=-1,
-                                  traitAMax=1,
-                                  traitBMin=-1,
-                                  traitBMax=1) {
+overlayWalkOnLandscape <- function(df,
+                                   type="CONTOUR",
+                                   fitCalc,
+                                   traitAMin=-1,
+                                   traitAMax=1,
+                                   traitBMin=-1,
+                                   traitBMax=1) {
   
   fitness_x = seq(traitAMin,traitAMax, by=0.05)
   fitness_y = seq(traitBMin,traitBMax, by=0.05)
@@ -92,16 +92,14 @@ plot3dPopulationFitness <- function(pop, fitCalc) {
                    traitB=numeric(popSize),
                    fitness=numeric(popSize))
   for (i in 1:popSize) {
-    df$traitA[i] <- pheno(pop)[i,1]
-    df$traitB[i] <- pheno(pop)[i,2]
+    df$traitA[i] <- gv(pop)[i,1]
+    df$traitB[i] <- gv(pop)[i,2]
     df$fitness[i] <- fitCalc(df$traitA[i], df$traitB[i])
   }
-  fig <- plot_ly()
-  
-  plot_ly() %>% 
+  fig <- plot_ly() %>%
     layout(scene = list(xaxis = list(title = "Trait 1"),
                         yaxis = list(title = "Trait 2"),
-                        zaxis = list(title = "w"),
+                        zaxis = list(title = "Fitness"),
                         aspectmode='cube')) %>%
     add_trace(
       fig,
@@ -113,37 +111,11 @@ plot3dPopulationFitness <- function(pop, fitCalc) {
       type = 'scatter3d',
       mode = 'markers',
       color=df$fitness)
+  return (fig)
 }
 
-# Plots the trait architecture on a genetic basis
-# Works for 1 or 2 trait populations
-plotTraitArchitecture <- function(pop, methodType="MethodB", fitFunc) {
-  geno <- pullQtlGeno(pop,1)
-  if (pop@nTraits > 1) {
-    for (t in 2:pop@nTraits) {
-      geno <- cbind(geno, pullQtlGeno(pop, trait=t))
-    }
-  }
-  cols <- colnames(geno)
-  nLoci <- length(cols)
-  popSize <- nrow(geno)
-  eff_sizes <- data.frame(id = character(nLoci),
-                          eff_size=numeric(nLoci))
-  for (l in 1:nLoci) {
-    id <- cols[l]
-    eff_sizes$id[l] <- id
-    locus = geno[,l]
-    eff_sizes$eff_size[l] <- getEffectSize(locus,
-                                           id,
-                                           twoTraitFitFunc,
-                                           pop,
-                                           methodType)
-    
-  }
-  eff_sizes <- eff_sizes[apply(eff_sizes!=0, 1, all),]
-  eff_sizes <- na.omit(eff_sizes)
-  eff_sizes <- unique(eff_sizes)
-  e <- eff_sizes
+plotTraitArchitecture <- function(pop, methodType="Fitness", fitFunc) {
+  eff_sizes <- traitArchitecture(pop, methodType, fitFunc)
   g <- ggplot(data=eff_sizes, aes(x=reorder(id, -eff_size), y=eff_size)) +
     geom_bar(stat="identity") +
     labs(x = "Variant Id", y = "Effect Size") +
