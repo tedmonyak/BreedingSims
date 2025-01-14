@@ -21,11 +21,16 @@ library(viridis)
 install_github("jtlovell/qtlTools")
 rm(list = ls())
 
-setwd("~/Documents/CSU/R/Collaborative-Learning-Group/Ted")
+set.seed(123)
+
+
+setwd("~/Documents/CSU/R/BreedingSims")
 #source("CreateFounderPop.R")
 source("FitnessFunctions.R")
 source("GlobalVariables.R")
 source("MappingFunctions.R")
+source("Plotting.R")
+source("Scripts.R")
 output_dir <- file.path(getwd(), "Output")
 if (!dir.exists(output_dir)) dir.create(output_dir)
 ```
@@ -101,7 +106,7 @@ for (s in 1:n.sims) {
   
   for(gen in 1:n.gens) {
     idx = (s-1)*n.gens + gen
-    df$fitness[idx] <- oneTraitFitFunc(meanP(pop))
+    df$fitness[idx] <- mean(oneTraitFitFunc(pheno(pop)))
     df$traitVal[idx] <- meanP(pop)
     df$initialVal[idx] <- initVal
     pop <- selectCross(pop=pop, trait=oneTraitFitFunc, nInd=n.popSize/2, nCrosses=n.popSize)
@@ -147,7 +152,7 @@ fit_df <- data.frame(gen=1:n.gens,
                  fitness=numeric(n.gens),
                  traitVal=numeric(n.gens))
 for(gen in 1:n.gens) {
-  fit_df$fitness[gen] <- oneTraitFitFunc(meanP(pop))
+  fit_df$fitness[gen] <- mean(oneTraitFitFunc(pheno(pop)))
   fit_df$traitVal[gen] <- meanP(pop)
   pop <- selectCross(pop=pop, trait=oneTraitFitFunc, nInd=n.popSize/2, nCrosses=n.popSize)
 }
@@ -187,7 +192,7 @@ population w/standing genetic variation
 ```{r}
 n.popSize = 200
 n.segSites = 100
-n.gens <- 50
+n.gens <- 10
 
 founders = runMacs(
    nInd=n.popSize,
@@ -263,7 +268,7 @@ axis(side = 4, at = pretty(range(df$percFitInc)))
 mtext("% of Segregating alleles that are Beneficial", side = 4, line = 3)
 par(xpd=TRUE)
 legend("right",
-  c("Trait Value", "% Alleles"),
+  c("Fitness", "% Alleles"),
        lty = 1,
        lwd = 3,
        col = 2:3)
@@ -278,8 +283,8 @@ dev.off()
 Simulate several adaptive walks with different population sizes
 ```{r}
 n.gens = 50
-n.popSizes = c(100,500,5000)
-n.segSites = 1000
+n.popSizes = c(100,500,1000)
+n.segSites = 500
 
 fig <- plot_ly()
 fit_df <- data.frame(gen=1:n.gens,
@@ -303,9 +308,9 @@ for (p in c(1:length(n.popSizes))) {
   pop <- foundingPop
   
   for(gen in 1:n.gens) {
-    fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
-    fit_df$traitValA[gen] <- meanG(pop)[1]
-    fit_df$traitValB[gen] <- meanG(pop)[2]
+    fit_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
+    fit_df$traitValA[gen] <- meanP(pop)[1]
+    fit_df$traitValB[gen] <- meanP(pop)[2]
     pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*(n.selProp), nCrosses=n.popSize)
   }
   
@@ -345,11 +350,10 @@ htmlwidgets::saveWidget(as_widget(fig), fname)
 
 Overlay an adaptive walk over a fitness landscape
 ```{r}
-set.seed(123)
-
 n.gens = 50
 n.popSize = 200
 n.segSites = 50
+plotType="CONTOUR"
 
 fig <- plot_ly()
 fit_df <- data.frame(gen=1:n.gens,
@@ -362,7 +366,7 @@ founders = runMacs(
    segSites=n.segSites
 )
 SP <- SimParam$new(founders)
-SP$addTraitA(mean=c(runif(1,-10,10),runif(1,-10,10)), var=c(1,1), nQtlPerChr=n.qtlPerChr)
+SP$addTraitA(mean=c(runif(1,n.initTraitVal*-1,n.initTraitVal),runif(1,n.initTraitVal*-1,n.initTraitVal)), var=c(n.rate,n.rate), nQtlPerChr=n.qtlPerChr)
 
 SP$setVarE(h2=c(n.h2,n.h2))
 foundingPop <- newPop(founders, simParam = SP)
@@ -370,18 +374,29 @@ foundingPop <- newPop(founders, simParam = SP)
 pop <- foundingPop
 
 for(gen in 1:n.gens) {
-  fit_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
-  fit_df$traitValA[gen] <- meanP(pop)[1]
-  fit_df$traitValB[gen] <- meanP(pop)[2]
-  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*0.5, nCrosses=n.popSize)
+  fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
+  fit_df$traitValA[gen] <- meanG(pop)[1]
+  fit_df$traitValB[gen] <- meanG(pop)[2]
+  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*n.selProp, nCrosses=n.popSize)
 }
 
-overlayWalkOnLandscape(fit_df, type="CONTOUR", calculateFitnessTwoTrait)
+p <- overlayWalkOnLandscape(fit_df, type=plotType, calculateFitnessTwoTrait)
+
+save_dir <- file.path(output_dir, "OverlayAdaptiveWalk")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+fname <- file.path(save_dir, paste0("adaptivewalk_", plotType, ".html"))
+htmlwidgets::saveWidget(as_widget(p), fname)
 ```
 
 This block runs 100 monte carlo simulations of different subpopulations to determine the average effect size of alleles that are fixed
 ```{r}
+n.popSize <- 500
+n.subPopSize <- 100
+n.segSites <- 100
 
+source("CreateFounderPop.R")
 
 fit_df <- data.frame(gen=1:n.burnInGens,
                    fitness=numeric(n.burnInGens),
@@ -395,7 +410,7 @@ for (gen in 1:n.burnInGens) {
   fit_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
   fit_df$traitValA[gen] <- meanP(pop)[1]
   fit_df$traitValB[gen] <- meanP(pop)[2]
-  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
+  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*n.burnInSelProp, nCrosses=n.popSize)
 }
 
 
@@ -415,13 +430,13 @@ fig <- add_trace(
   line = list(width = 5)
 )
 
-nSegGens <- 120
-subPop_df <- data.frame(gen=1:nSegGens,
-                   fitness=numeric(nSegGens),
-                   traitValA=numeric(nSegGens),
-                   traitValB=numeric(nSegGens))
+n.gens <- 120
+subPop_df <- data.frame(gen=1:n.gens,
+                   fitness=numeric(n.gens),
+                   traitValA=numeric(n.gens),
+                   traitValB=numeric(n.gens))
 
-n.sims <- 150
+n.sims <- 2
 # figure out how to do this dynamically
 eff_size_df <- data.frame(orderFixed=c(),
                           effectSize=c())
@@ -430,11 +445,11 @@ eff_size_df <- data.frame(orderFixed=c(),
 for (s in 1:n.sims) {
   print(s)
   # Figure out a better way to select randomly? or by traitA, traitB?
-  subPop <- selectInd(pop, use="rand", nInd=nInd(pop)*0.25)
+  subPop <- selectInd(pop, use="rand", nInd=n.subPopSize)
   idx <- 1
   inc <- FALSE
   
-  for (gen in 1:nSegGens) {
+  for (gen in 1:n.gens) {
     subPop_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(subPop)))
     subPop_df$traitValA[gen] <- meanP(subPop)[1]
     subPop_df$traitValB[gen] <- meanP(subPop)[2]
@@ -446,20 +461,21 @@ for (s in 1:n.sims) {
         prevGeno <- cbind(prevGeno, pullQtlGeno(prevPop, trait=t))
       }
     }
+    prevGeno <- prevGeno[, !duplicated(colnames(prevGeno))]
     newGeno <- pullQtlGeno(subPop,1)
     if (subPop@nTraits > 1) {
       for (t in 2:subPop@nTraits) {
         newGeno <- cbind(newGeno, pullQtlGeno(subPop, trait=t))
       }
     }
-    #newGeno <- pullSegSiteGeno(subPop)
+    newGeno <- newGeno[, !duplicated(colnames(newGeno))]
     cols <- colnames(newGeno)
     n.loci <- length(cols)
     for (l in 1:n.loci) {
       id <- cols[l]
-      strs = unlist(strsplit(id, "_"))
-      chr = strtoi(strs[1])
-      site = strtoi(strs[2])
+      #strs = unlist(strsplit(id, "_"))
+      #chr = strtoi(strs[1])
+      #site = strtoi(strs[2])
       prevLocus = prevGeno[,l]
       newLocus = newGeno[,l]
       if (hetLocus(prevLocus) && !hetLocus(newLocus)) {
@@ -498,7 +514,7 @@ for (s in 1:n.sims) {
 }
 
 grouped_df <- eff_size_df %>% group_by(orderFixed) %>% summarize(meanEffectSize = mean(effectSize))
-ggplot(data=grouped_df, aes(x=orderFixed, y=meanEffectSize)) +
+g <- ggplot(data=grouped_df, aes(x=orderFixed, y=meanEffectSize)) +
   geom_bar(stat="identity") +
   geom_smooth(formula = y ~ a^x)
 
@@ -510,137 +526,135 @@ p <- fig %>%
                       yaxis = list(title = "Trait B"),
                       zaxis = list(title = "w"),
                       aspectmode='cube')) %>% hide_colorbar()
-p
-htmlwidgets::saveWidget(as_widget(p), "~/Downloads/20241209_100adaptivewalks.html")
+
+save_dir <- file.path(output_dir, "AverageEffectSize")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+fname <- file.path(save_dir, "adaptivewalk.html")
+htmlwidgets::saveWidget(as_widget(p), fname)
+
+ggplot2::ggsave(filename = "average_effect_size.pdf",
+                path=save_dir,
+                device = "pdf")
 
 ```
 
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
 ```{r}
-adaptiveWalk <- function(nBurnInGens, nGens) {
-  if (showPlot) {
-    fit_df <- data.frame(gen=1:nBurnInGens,
-                     fitness=numeric(nBurnInGens),
-                     traitValA=numeric(nBurnInGens),
-                     traitValB=numeric(nBurnInGens))
-  }
-  pop <- foundingPop
-  
-  # BURN-IN
-  for (gen in 1:n.burnInGens) {
-    if (showPlot) {
-      fit_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
-      fit_df$traitValA[gen] <- meanP(pop)[1]
-      fit_df$traitValB[gen] <- meanP(pop)[2]
-    }
-    pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*burnInSelProp, nCrosses=nInd(pop))
-  }
-  
-  # Create 2 sub populations
-  # Figure out a better way to select randomly? or by traitA, traitB?
-  popA <- selectInd(pop, use="rand", nInd=subn.popSize)
-  popB <- selectInd(pop, use="rand", nInd=subn.popSize)
-  
-  if (showPlot) {
-    popA_df <- data.frame(gen=c(1),
-                     fitness=c(mean(twoTraitFitFunc(pheno(popA)))),
-                     traitValA=c(traitValA=meanP(popA)[1]),
-                     traitValB=c(traitValB=meanP(popA)[2]))
-    popB_df <- data.frame(gen=c(1),
-                     fitness=c(mean(twoTraitFitFunc(pheno(popB)))),
-                     traitValA=c(traitValA=meanP(popB)[1]),
-                     traitValB=c(traitValB=meanP(popB)[2]))
-  
-  }
-  
-  for (gen in 1:nGens) {
-    if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
-      popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*selProp, nCrosses=nInd(popA))
-      if (showPlot) {
-        popA_df <- rbind(popA_df, data.frame(gen=gen,
-                                           fitness= mean(twoTraitFitFunc(pheno(popA))),
-                                           traitValA=meanP(popA)[1],
-                                           traitValB=meanP(popA)[2]))
-      }
-      
-    }
-    if (mean(twoTraitFitFunc(pheno(popB))) < n.margin) {
-      popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*selProp, nCrosses=nInd(popB))
-      if (showPlot) {
-        popB_df <- rbind(popB_df, data.frame(gen=gen,
-                                           fitness= mean(twoTraitFitFunc(pheno(popB))),
-                                           traitValA=meanP(popB)[1],
-                                           traitValB=meanP(popB)[2]))
-      }
-      
-    }
-  }
-  if (showPlot) {
-    rownames(popA_df) <- 1:nrow(popA_df)
-    rownames(popB_df) <- 1:nrow(popB_df)
-    fig <- plot_ly()
-    fig <- add_trace(
-      fig,
-      fit_df,
-      name = "Burn In",
-      x = fit_df$traitValA,
-      y = fit_df$traitValB,
-      z = fit_df$fitness,
-      type = 'scatter3d',
-      mode = 'lines',
-      opacity = 1,
-      color = 'yellow',
-      line = list(width = 5)
-    )
-    
-    fig <- add_trace(
-        fig,
-        popA_df,
-        name = "Pop A",
-        x = popA_df$traitValA,
-        y = popA_df$traitValB,
-        z = popA_df$fitness,
-        type = 'scatter3d',
-        mode = 'lines',
-        opacity = 1,
-        color = 'red',
-        line = list(width = 5)
-      )
-    
-    fig <- add_trace(
-        fig,
-        popB_df,
-        name = "Pop B",
-        x = popB_df$traitValA,
-        y = popB_df$traitValB,
-        z = popB_df$fitness,
-        type = 'scatter3d',
-        mode = 'lines',
-        opacity = 1,
-        color = 'blue',
-        line = list(width = 5)
-      )
-    
-    
-    p <- fig %>%
-      layout(legend=list(title=list(text='Population')),
-             showlegend=FALSE,
-             scene = list(xaxis = list(title = "Trait A"),
-                          yaxis = list(title = "Trait B"),
-                          zaxis = list(title = "Fitness"),
-                          aspectmode='cube')) %>% hide_colorbar()
-    
-    p
-    htmlwidgets::saveWidget(as_widget(p), paste0(format(Sys.time(), "%F"), "adaptivewalks.html"))
-    (plotTraitArchitecture(popA, "MethodB", twoTraitFitFunc) |
-        plotTraitArchitecture(popB, "MethodB",twoTraitFitFunc))
-  }
-  return (c(popA, popB))
+fit_df <- data.frame(gen=1:n.burnInGens,
+                 fitness=numeric(n.burnInGens),
+                 traitValA=numeric(n.burnInGens),
+                 traitValB=numeric(n.burnInGens))
+pop <- foundingPop
+
+# BURN-IN
+for (gen in 1:n.burnInGens) {
+  fit_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
+  fit_df$traitValA[gen] <- meanP(pop)[1]
+  fit_df$traitValB[gen] <- meanP(pop)[2]
+  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
 }
 
-popA_popB <- adaptiveWalk(nBurnInGens=n.burnInGens, nMaxSegGens=n.gens)
-popA <- popA_popB[1:n.subPopSize]
-popB <- popA_popB[(n.subPopSize+1):(n.subPopSize*2)]
+# Create 2 sub populations
+# Figure out a better way to select randomly? or by traitA, traitB?
+popA <- selectInd(pop, use="rand", nInd=n.subPopSize)
+popB <- selectInd(pop, use="rand", nInd=n.subPopSize)
+
+popA_df <- data.frame(gen=c(1),
+                 fitness=c(mean(twoTraitFitFunc(pheno(popA)))),
+                 traitValA=c(traitValA=meanP(popA)[1]),
+                 traitValB=c(traitValB=meanP(popA)[2]))
+popB_df <- data.frame(gen=c(1),
+                 fitness=c(mean(twoTraitFitFunc(pheno(popB)))),
+                 traitValA=c(traitValA=meanP(popB)[1]),
+                 traitValB=c(traitValB=meanP(popB)[2]))
+
+for (gen in 1:n.gens) {
+  if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
+    popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*n.selProp, nCrosses=nInd(popA))
+    popA_df <- rbind(popA_df, data.frame(gen=gen,
+                                       fitness= mean(twoTraitFitFunc(pheno(popA))),
+                                       traitValA=meanP(popA)[1],
+                                       traitValB=meanP(popA)[2]))
+    
+  }
+  if (mean(twoTraitFitFunc(pheno(popB))) < n.margin) {
+    popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*n.selProp, nCrosses=nInd(popB))
+    popB_df <- rbind(popB_df, data.frame(gen=gen,
+                                       fitness= mean(twoTraitFitFunc(pheno(popB))),
+                                       traitValA=meanP(popB)[1],
+                                       traitValB=meanP(popB)[2]))
+  }
+}
+rownames(popA_df) <- 1:nrow(popA_df)
+rownames(popB_df) <- 1:nrow(popB_df)
+fig <- plot_ly()
+fig <- add_trace(
+  fig,
+  fit_df,
+  name = "Burn In",
+  x = fit_df$traitValA,
+  y = fit_df$traitValB,
+  z = fit_df$fitness,
+  type = 'scatter3d',
+  mode = 'lines',
+  opacity = 1,
+  color = 'yellow',
+  line = list(width = 5)
+)
+
+fig <- add_trace(
+    fig,
+    popA_df,
+    name = "Pop A",
+    x = popA_df$traitValA,
+    y = popA_df$traitValB,
+    z = popA_df$fitness,
+    type = 'scatter3d',
+    mode = 'lines',
+    opacity = 1,
+    color = 'red',
+    line = list(width = 5)
+  )
+
+fig <- add_trace(
+    fig,
+    popB_df,
+    name = "Pop B",
+    x = popB_df$traitValA,
+    y = popB_df$traitValB,
+    z = popB_df$fitness,
+    type = 'scatter3d',
+    mode = 'lines',
+    opacity = 1,
+    color = 'blue',
+    line = list(width = 5)
+  )
+
+
+p <- fig %>%
+  layout(legend=list(title=list(text='Population')),
+         showlegend=FALSE,
+         scene = list(xaxis = list(title = "Trait A"),
+                      yaxis = list(title = "Trait B"),
+                      zaxis = list(title = "Fitness"),
+                      aspectmode='cube')) %>% hide_colorbar()
+
+save_dir <- file.path(output_dir, "DivergingPopulations")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+fname <- file.path(save_dir, "adaptivewalks.html")
+htmlwidgets::saveWidget(as_widget(p), fname)
+
+fname <- file.path(save_dir, "traitarchitecture.pdf")
+pdf(fname)
+
+(plotTraitArchitecture(popA, "MethodB", twoTraitFitFunc) |
+    plotTraitArchitecture(popB, "MethodB",twoTraitFitFunc))
+
+dev.off()
 ```
 
 Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.
@@ -664,17 +678,17 @@ repeat {
 
   # BURN-IN
   for (gen in 1:n.burnInGens) {
-    pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*0.95, nCrosses=nInd(pop))
+    pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
   }
   popA <- selectInd(pop, use="rand", nInd=40)
   popB <- selectInd(pop, use="rand", nInd=40)
 
   for (gen in 1:n.gens) {
     if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
-      popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*0.8, nCrosses=nInd(popA))
+      popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*n.selProp, nCrosses=nInd(popA))
     }
     if (mean(twoTraitFitFunc(pheno(popB))) < n.margin) {
-      popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*0.8, nCrosses=nInd(popB))
+      popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*n.selProp, nCrosses=nInd(popB))
     }
   }
   
@@ -683,7 +697,7 @@ repeat {
   F1 <- randCross2(parentA,
                    parentB,
                    nCrosses=1,
-                   nProgeny=200)
+                   nProgeny=n.RILFams)
   F2 <- self(F1)
   F3 <- self(F2)
   F4 <- self(F3)
@@ -692,7 +706,7 @@ repeat {
   F7 <- self(F6)
   F8 <- self(F7)
   F9 <- self(F8)
-  RIL <- self(F9, nProgeny=4)
+  RIL <- self(F9, nProgeny=n.indPerRILFam)
   result_df$traitVal1[s] <- meanP(popA)[1]
   result_df$traitVal2[s] <- meanP(popA)[2]
   result_df$pop[s] <- "Elite Pop 1"
@@ -724,33 +738,27 @@ t2 <- ggplot(data=result_df, aes(x=traitVal2, fill=pop)) +
   labs(title="Trait 2")
 
 (t1|t2)
+
+save_dir <- file.path(output_dir, "EliteVSRIL")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+
+fname <- file.path(save_dir, "EliteVSRil.pdf")
+ggplot2::ggsave(filename = fname,
+                device = "pdf")
 ```
 
 Pull out individuals from each population and cross them
 Create RILs
 ```{r}
-createGWASPop <- function() {
-  gwasPop <- c(popA, popB)
-}
-
-res <- createRIL(interPop=TRUE)
-RIL <- res[1:(length(res)-2)]
-parentA <- res[length(res)-1]
-parentB <- res[length(res)]
-```
-
-
-QTL Mapping
-```{r}
-getSigQtl <- function(RIL, parentA, parentB) {
+getSigQtl <- function(RIL, parentA, parentB, savePlot=FALSE) {
   cross <- getCross(RIL, parentA, parentB, "riself")
-  #plot(cross)
   cross <- drop.nullmarkers(cross)
-  #nmar(cross)
   phes <- phenames(cross)[1:2]
-  cross <- calc.genoprob(cross, step=1, error.prob=0.001)
-  out.hk <- scanone(cross, pheno.col=phes, method="hk")
-  operm.hk <- scanone(cross, pheno.col=phes, method="hk", n.perm=1000)
+  cross <- calc.genoprob(cross, step=n.step, error.prob=n.errorProb)
+  out.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod)
+  operm.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod, n.perm=1000)
   sigQtl <- pullSigQTL(cross,
                        pheno.col=phes,
                        s1.output=out.hk,
@@ -758,45 +766,63 @@ getSigQtl <- function(RIL, parentA, parentB) {
                        returnQTLModel=FALSE,
                        alpha=0.05,
                        controlAcrossCol=TRUE)
-  if (showPlot) {
+  if (savePlot) {
+    save_dir <- file.path(output_dir, "QtlMapping")
+    if (!dir.exists(save_dir)) dir.create(save_dir)
+    save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+    if (!dir.exists(save_dir)) dir.create(save_dir)
+    fname <- file.path(save_dir, "linkagemap.pdf")
+
+    pdf(fname)
     cols <- c("blue", "red")
     plot(out.hk, type="n", ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))), ylab= "LOD Score")
     for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i])
     abline(h=summary(operm.hk[1,1]), col="blue", lty = "dotted", lwd=2)
     abline(h=summary(operm.hk[1,2]), col="red", lty = "dotted", lwd=2)
+    dev.off()
+    
+    geno = rbind(pullQtlGeno(RIL), pullQtlGeno(parentA), pullQtlGeno(parentB))
+    PCA  = dudi.pca(df = geno, center = T, scale = F, scannf = F, nf = 5)
+    (VAF = 100 * PCA$eig[1:5] / sum(PCA$eig)) # variance explained
+    df.PCA = data.frame(
+      "Pop" = c(rep("RIL", RIL@nInd), "Parent A", "Parent B"),
+      "PC1" = PCA$l1$RS1,
+      "PC2" = PCA$l1$RS2)
+    ggplot(df.PCA, aes(x = PC1, y = PC2)) +
+      geom_point(aes(colour = factor(Pop))) +
+      ggtitle("Population structure") +
+      xlab(paste("Pcomp1: ", round(VAF[1], 2), "%", sep = "")) +
+      ylab(paste("Pcomp2: ", round(VAF[2], 2), "%", sep = ""))
+    
+    fname <- file.path(save_dir, "PCA.pdf")
+    ggplot2::ggsave(filename = fname,
+                    device = "pdf")
   }
   return (nrow(sigQtl))
 }
+#source("CreateFounderPop.R")
+popA_popB <- createIndependentPops()
+popA <- popA_popB[1:n.subPopSize]
+popB <- popA_popB[(n.subPopSize+1):(n.subPopSize*2)]
+res <- createRIL(interPop=TRUE)
+RIL <- res[1:(length(res)-2)]
+parentA <- res[length(res)-1]
+parentB <- res[length(res)]
 
-getSigQtl(RIL, parentA, parentB)
-
-#plot(cross)
-#nmar(cross)
-#plot.map(pull.map(cross),est.map(cross))
-#summary(operm.hk, alpha=0.05, pvalues=TRUE)
-
-
-#mar <- find.marker(cross, chr=10, pos=63.3)
-#plotPXG(cross, marker=mar)
-#effectplot(cross, mname1=mar)
-#out.cim <- cim(cross, n.marcovar=3)
-#plot(out.cim)
+getSigQtl(RIL, parentA, parentB, savePlot=TRUE)
 ```
 
+QTL Simulation
 ```{r}
-
-```
-
-```{r}
-n.sims <- 50
+n.sims <- 2
 res.df <- data.frame(sim=rep(1:n.sims, times=2),
                      type=c(2*n.sims),
                      nSigQtl=c(2*n.sims))
 for (s in 1:n.sims) {
   print(paste0("Sim ", s))
-  popA_popB <- adaptiveWalk(nBurnInGens=5, nMaxSegGens=100)
-  popA <- popA_popB[1:subn.popSize]
-  popB <- popA_popB[(subn.popSize+1):(subn.popSize*2)]
+  popA_popB <- createIndependentPops()
+  popA <- popA_popB[1:n.subPopSize]
+  popB <- popA_popB[(n.subPopSize+1):(n.subPopSize*2)]
   
   res <- createRIL(interPop=TRUE)
   RIL <- res[1:(length(res)-2)]
@@ -815,9 +841,7 @@ for (s in 1:n.sims) {
   res.df$nSigQtl[s+n.sims] <- nQtl
 }
 
-res_df
-
-tot <- rbind(res.df[1:41,], res.df[51:90,])
+tot <- rbind(res.df[1:n.sims,], res.df[n.sims+1:n.sims*2,])
 
 ggplot(data=tot, aes(x=nSigQtl, fill=type)) +
   geom_histogram(position='identity', binwidth = 1, col='black', alpha=0.9) +
@@ -825,24 +849,17 @@ ggplot(data=tot, aes(x=nSigQtl, fill=type)) +
                     values = c("Trans-elite" = "orange",
                                "Cis-elite" = "darkgreen")) +
   labs(title="# Significant QTL Obtained from Linkage Mapping", xaxis="# QTL")
+
+save_dir <- file.path(output_dir, "AverageNumSignificantQtl")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+fname <- file.path(save_dir, "significantqtl.pdf")
+ggplot2::ggsave(filename = fname,
+                device = "pdf")
 ```
 
-
-
-PCA
 ```{r}
-geno = rbind(pullQtlGeno(RIL), pullQtlGeno(parentA), pullQtlGeno(parentB))
-PCA  = dudi.pca(df = geno, center = T, scale = F, scannf = F, nf = 5)
-(VAF = 100 * PCA$eig[1:5] / sum(PCA$eig)) # variance explained
-df.PCA = data.frame(
-  "Pop" = c(rep("RIL", RIL@nInd), "Parent A", "Parent B"),
-  "PC1" = PCA$l1$RS1,
-  "PC2" = PCA$l1$RS2)
-ggplot(df.PCA, aes(x = PC1, y = PC2)) +
-  geom_point(aes(colour = factor(Pop))) +
-  ggtitle("Population structure") +
-  xlab(paste("Pcomp1: ", round(VAF[1], 2), "%", sep = "")) +
-  ylab(paste("Pcomp2: ", round(VAF[2], 2), "%", sep = ""))
 
 ```
 
@@ -884,6 +901,18 @@ qq(model2$Trait1, main = "Marker + principal components")
 
 QTL stuff not being used
 ```{r}
+#plot(cross)
+#nmar(cross)
+#plot.map(pull.map(cross),est.map(cross))
+#summary(operm.hk, alpha=0.05, pvalues=TRUE)
+
+
+#mar <- find.marker(cross, chr=10, pos=63.3)
+#plotPXG(cross, marker=mar)
+#effectplot(cross, mname1=mar)
+#out.cim <- cim(cross, n.marcovar=3)
+#plot(out.cim)
+
 data("multitrait")
 data(multitrait)
 data(map10)
