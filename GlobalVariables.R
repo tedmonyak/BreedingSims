@@ -18,8 +18,13 @@ n.chr <- 10
 n.RILFams <- 200
 n.indPerRILFam <- 4
 
+# QTL Mapping Parameters
+n.mappingMethod <- "hk"
+n.errorProb <- 0.001
+n.step <- 1
+
+
 getParams <- function() {
-  
   n.df <- data.frame(
     popSize=n.popSize,
     subPopSize=n.subPopSize,
