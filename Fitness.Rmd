@@ -814,7 +814,7 @@ getSigQtl(RIL, parentA, parentB, savePlot=TRUE)
 
 QTL Simulation
 ```{r}
-n.sims <- 2
+n.sims <- 10
 res.df <- data.frame(sim=rep(1:n.sims, times=2),
                      type=c(2*n.sims),
                      nSigQtl=c(2*n.sims))
@@ -841,9 +841,7 @@ for (s in 1:n.sims) {
   res.df$nSigQtl[s+n.sims] <- nQtl
 }
 
-tot <- rbind(res.df[1:n.sims,], res.df[n.sims+1:n.sims*2,])
-
-ggplot(data=tot, aes(x=nSigQtl, fill=type)) +
+ggplot(data=res.df, aes(x=nSigQtl, fill=type)) +
   geom_histogram(position='identity', binwidth = 1, col='black', alpha=0.9) +
   scale_fill_manual(name = "Parental Cross Type",
                     values = c("Trans-elite" = "orange",
@@ -857,10 +855,6 @@ if (!dir.exists(save_dir)) dir.create(save_dir)
 fname <- file.path(save_dir, "significantqtl.pdf")
 ggplot2::ggsave(filename = fname,
                 device = "pdf")
-```
-
-```{r}
-
 ```
 
 GWAS
