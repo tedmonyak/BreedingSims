@@ -30,10 +30,6 @@ createRIL <- function(interPop=TRUE) {
   return (c(RIL, parentA, parentB))
 }
 
-createGWASPop <- function() {
-  gwasPop <- c(popA, popB)
-}
-
 getABHGeno <- function(RIL, parentA, parentB, genoEnc=c(NA,1,2,3)) {
   # Filter out monomorphic snps
   allSnps <- as.data.frame(t(rbind(pullSnpGeno(parentA),pullSnpGeno(parentB))))

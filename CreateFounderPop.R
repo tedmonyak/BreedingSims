@@ -26,7 +26,7 @@ SP$restrSegSites(overlap = T)
 SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma = TRUE, shape = n.shape) # e.g. height
 SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma = TRUE, shape = n.shape) # e.g. flowering time
 
-#SP$addTraitA(mean=c(runif(1,-10,10),runif(1,-10,10)), var=c(1,1), nQtlPerChr=20)
+#SP$addTraitA(mean=c(runif(1,n.initTraitVal*-1,n.initTraitVal),runif(1,n.initTraitVal*-1,n.initTraitVal)), var=c(n.rate,n.rate), nQtlPerChr=n.qtlPerChr)
 #SP$addTraitA(mean=950, var=200, nQtlPerChr = 100, gamma = TRUE, shape = 1)
 
 SP$setVarE(h2=c(n.h2, n.h2))

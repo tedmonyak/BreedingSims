@@ -1,6 +1,7 @@
 ---
 title: "Playing Around with Fitness Functions"
 output: html_notebook
+author: Ted Monyak
 ---
 
 Imports
@@ -17,39 +18,28 @@ library(qtl)
 library(qtlTools)
 library(reshape2)
 library(rrBLUP)
+library(snow)
 library(viridis)
 install_github("jtlovell/qtlTools")
 rm(list = ls())
 
 set.seed(123)
 
-
 setwd("~/Documents/CSU/R/BreedingSims")
-#source("CreateFounderPop.R")
 source("FitnessFunctions.R")
 source("GlobalVariables.R")
 source("MappingFunctions.R")
 source("Plotting.R")
-source("Scripts.R")
+source("CreateFounderPop.R")
 output_dir <- file.path(getwd(), "Output")
 if (!dir.exists(output_dir)) dir.create(output_dir)
 ```
 
 Play around with different fitness functions
 ```{r}
-#x = seq(-1,1, by=0.05)
-#y = oneTraitFitFunc(x)
-
-#df <- data.frame(x=x, y=y)
-#ggplot(data=df, aes(x=x, y=y)) +
-#    geom_line() +
-#    geom_point() +
-#    labs(x = "Trait Value", y = "Fitness")
-
 fitness_x = seq(-1,1, by=0.05)
 fitness_y = seq(-1,1, by=0.05)
 fitness_z = outer(fitness_x,fitness_y,calculateFitnessTwoTrait)
-
 
 p <- plot_ly(x=fitness_x,
         y=fitness_y,
@@ -80,8 +70,6 @@ start_trait_val <- c(-3,-2,-1,1,2,3)
 n.sims <- length(start_trait_val)
 n.popSize <- 50
 n.segSites <- 50
-n.gens <- 50
-n.chr <- 10
 
 df <- data.frame(gen=rep(1:n.gens, times=n.sims),
                  fitness=numeric(n.gens*n.sims),
@@ -129,11 +117,8 @@ ggplot2::ggsave(filename = "converging_fitness.pdf",
                 device = "pdf")
 ```
 
-Plot Trait Value against Fitness
+Plot Trait Value against Fitness for 1 Trait
 ```{r}
-n.gens <- 50
-n.segSites <- 1000
-
 founders = quickHaplo(
    nInd=n.popSize,
    nChr=n.chr,
@@ -182,16 +167,7 @@ dev.off()
 
 Plot different trait architectures
 ```{r}
-source("GlobalVariables.R")
-
 methodType <- "Fitness"
-n.popSize <- 200
-n.qtlPerChr <- 5
-n.initTraitVal <- 1
-n.var <- 0.1
-n.shape <- 1
-
-source("CreateFounderPop.R")
 
 plotTraitArchitecture(foundingPop, methodType, twoTraitFitFunc)
 
@@ -213,13 +189,7 @@ htmlwidgets::saveWidget(as_widget(p), fname)
 
 Simulate several adaptive walks with different population sizes
 ```{r}
-source("GlobalVariables.R")
-n.gens <- 50
 n.popSizes <- c(40,200,1000)
-n.qtlPerChr <- 5
-n.segSites <- 1000
-n.selProp <- 0.8
-n.var <- 0.1
 addSnpChip <- FALSE
 
 fig <- plot_ly()
@@ -274,14 +244,12 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 fname <- file.path(save_dir, paste0("populationSizes_", n.popSizes[1], ",", n.popSizes[2], ",", n.popSizes[3], ".html"))
 htmlwidgets::saveWidget(as_widget(fig), fname)  
 
-fig
+source("GlobalVariables.R")
+source("CreateFounderPop.R")
 ```
 
 Overlay an adaptive walk over a fitness landscape
 ```{r}
-n.gens = 50
-n.popSize = 200
-n.segSites = 50
 plotType="CONTOUR"
 
 fig <- plot_ly()
@@ -289,16 +257,6 @@ fit_df <- data.frame(gen=1:n.gens,
                    fitness=numeric(n.gens),
                    traitValA=numeric(n.gens),
                    traitValB=numeric(n.gens))
-founders = runMacs(
-   nInd=n.popSize,
-   nChr=n.chr,
-   segSites=n.segSites
-)
-SP <- SimParam$new(founders)
-SP$addTraitA(mean=c(runif(1,n.initTraitVal*-1,n.initTraitVal),runif(1,n.initTraitVal*-1,n.initTraitVal)), var=c(n.rate,n.rate), nQtlPerChr=n.qtlPerChr)
-
-SP$setVarE(h2=c(n.h2,n.h2))
-foundingPop <- newPop(founders, simParam = SP)
 
 pop <- foundingPop
 
@@ -329,16 +287,8 @@ P(mutation gets fixed) - show that this matches Kimura
 Compare adaptive walks for DH/inbred population where there are new mutations VS
 population w/standing genetic variation
 ```{r}
-source("GlobalVariables.R")
-n.popSize = 1000
 n.gens <- 200
-n.qtlPerChr <- 5
-n.margin <- -0.1
-n.segSites <- 1000
-n.selProp <- 0.8
 addSnpChip <- FALSE
-
-source("CreateFounderPop.R")
 
 pop <- foundingPop
 df <- data.frame(gen=c(),
@@ -421,11 +371,10 @@ dev.off()
 
 This block runs 100 monte carlo simulations of different subpopulations to determine the average effect size of alleles that are fixed
 ```{r}
-n.popSize <- 500
-n.subPopSize <- 100
-n.segSites <- 100
-
-source("CreateFounderPop.R")
+n.popSize <- 1000
+n.subPopSize <- 200
+n.gens <- 120
+n.sims <- 100
 
 fit_df <- data.frame(gen=1:n.burnInGens,
                    fitness=numeric(n.burnInGens),
@@ -459,13 +408,11 @@ fig <- add_trace(
   line = list(width = 5)
 )
 
-n.gens <- 120
 subPop_df <- data.frame(gen=1:n.gens,
                    fitness=numeric(n.gens),
                    traitValA=numeric(n.gens),
                    traitValB=numeric(n.gens))
 
-n.sims <- 2
 # figure out how to do this dynamically
 eff_size_df <- data.frame(orderFixed=c(),
                           effectSize=c())
@@ -494,10 +441,10 @@ for (s in 1:n.sims) {
       newLocus = newGeno[,l]
       if (hetLocus(prevLocus) && !hetLocus(newLocus)) {
         effSize <- getEffectSize(prevLocus,
-                                  id,
-                                  twoTraitFitFunc,
-                                  prevPop,
-                                  "MethodB")
+                                 id,
+                                 twoTraitFitFunc,
+                                 prevPop,
+                                 "Fitness")
         if (effSize > 0) {
           inc <- TRUE
           new_row <- data.frame(orderFixed=c(idx),
@@ -527,7 +474,10 @@ for (s in 1:n.sims) {
   )
 }
 
-grouped_df <- eff_size_df %>% group_by(orderFixed) %>% summarize(meanEffectSize = mean(effectSize))
+grouped_df <- eff_size_df %>%
+  group_by(orderFixed) %>%
+  summarize(meanEffectSize = mean(effectSize))
+
 g <- ggplot(data=grouped_df, aes(x=orderFixed, y=meanEffectSize)) +
   geom_bar(stat="identity") +
   geom_smooth(formula = y ~ a^x)
@@ -538,7 +488,7 @@ p <- fig %>%
          showlegend=FALSE,
          scene = list(xaxis = list(title = "Trait A"),
                       yaxis = list(title = "Trait B"),
-                      zaxis = list(title = "w"),
+                      zaxis = list(title = "Fitness"),
                       aspectmode='cube')) %>% hide_colorbar()
 
 save_dir <- file.path(output_dir, "AverageEffectSize")
@@ -666,18 +616,14 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 fname <- file.path(save_dir, "traitarchitecture.pdf")
 pdf(fname)
 
-(plotTraitArchitecture(popA, "MethodB", twoTraitFitFunc) |
-    plotTraitArchitecture(popB, "MethodB",twoTraitFitFunc))
+(plotTraitArchitecture(popA, "Fitness", twoTraitFitFunc) |
+    plotTraitArchitecture(popB, "Fitness",twoTraitFitFunc))
 
 dev.off()
 ```
 
 Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.
 ```{r}
-n.sims <- 100
-n.burnInGens <- 5
-n.gens <- 50
-
 result_df <- data.frame(sim=rep(1:n.sims, each=3),
                         traitVal1=numeric(n.sims*3),
                         traitVal2=numeric(n.sims*3),
@@ -685,7 +631,7 @@ result_df <- data.frame(sim=rep(1:n.sims, each=3),
 
 s <-1
 repeat {
-  print((s+2)/3)
+  print(paste0("Sim: ", (s+2)/3))
   if (s > n.sims*3) {
     break
   }
@@ -752,8 +698,6 @@ t2 <- ggplot(data=result_df, aes(x=traitVal2, fill=pop)) +
                                "Elite Pop 2" = "lightpink")) +
   labs(title="Trait 2")
 
-(t1|t2)
-
 save_dir <- file.path(output_dir, "EliteVSRIL")
 if (!dir.exists(save_dir)) dir.create(save_dir)
 save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
@@ -769,12 +713,16 @@ Pull out individuals from each population and cross them
 Create RILs
 ```{r}
 getSigQtl <- function(RIL, parentA, parentB) {
+  
   cross <- getCross(RIL, parentA, parentB, "riself")
   cross <- drop.nullmarkers(cross)
   phes <- phenames(cross)[1:2]
+  n.cores <- 8
   cross <- calc.genoprob(cross, step=n.step, error.prob=n.errorProb)
-  out.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod)
-  operm.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod, n.perm=1000)
+  out.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
+                    n.cluster=n.cores)
+  operm.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
+                      n.perm=1000,n.cluster=n.cores)
   sigQtl <- pullSigQTL(cross,
                        pheno.col=phes,
                        s1.output=out.hk,
@@ -817,7 +765,7 @@ getSigQtl <- function(RIL, parentA, parentB) {
   }
   return (nrow(sigQtl))
 }
-#source("CreateFounderPop.R")
+
 popA_popB <- createIndependentPops()
 popA <- popA_popB[1:n.subPopSize]
 popB <- popA_popB[(n.subPopSize+1):(n.subPopSize*2)]
@@ -828,9 +776,10 @@ parentB <- res[length(res)]
 
 saveQtlPlots <- TRUE
 getSigQtl(RIL, parentA, parentB)
+saveQtlPlots <- FALSE
 ```
 
-QTL Simulation
+QTL Monte Carlo Simulation
 ```{r}
 n.sims <- 10
 res.df <- data.frame(sim=rep(1:n.sims, times=2),
@@ -838,9 +787,7 @@ res.df <- data.frame(sim=rep(1:n.sims, times=2),
                      nSigQtl=c(2*n.sims))
 for (s in 1:n.sims) {
   print(paste0("Sim ", s))
-  popA_popB <- createIndependentPops()
-  popA <- popA_popB[1:n.subPopSize]
-  popB <- popA_popB[(n.subPopSize+1):(n.subPopSize*2)]
+  source("CreateIndependentPops.R")
   
   res <- createRIL(interPop=TRUE)
   RIL <- res[1:(length(res)-2)]
@@ -878,17 +825,31 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 
 GWAS
 ```{r}
-snpGeno = pullSnpGeno(gwasPop)
+n.markers <- 10
+n.popSize <- 200
+n.subPopSize <- 10
+source("CreateFounderPop.R")
+source("CreateIndependentPops.R")
+
+gwasPop <- c(popA, popB)
+snpGeno <- as.data.frame(pullSnpGeno(gwasPop))
+snpGeno <- snpGeno[sapply(snpGeno, function(x) length(unique(x)) > 1)]
 
 geno = data.frame(
   snp = colnames(snpGeno),
-  chr = c(ncol(snpGeno)),
-  pos = rep(1:n.markers, 10),
+  chr = numeric(length(colnames(snpGeno))),
+  pos = numeric(length(colnames(snpGeno))),
   t(snpGeno - 1)
 )
-pheno = data.frame(id = 1:F2@nInd,
-                    pheno  = F2@pheno)
-colnames(geno)[-c(1:3)] = 1:F2@nInd
+
+geno <- geno %>%
+  mutate(chr = strtoi(sub("_.*", "", snp))) %>%
+  mutate(pos = sub(".*_", "", snp))
+colnames(geno)[-c(1:3)] = 1:gwasPop@nInd
+
+
+pheno = data.frame(id = 1:gwasPop@nInd,
+                    pheno  = gwasPop@pheno)
 trait <- 2
 model1 = GWAS(pheno[,c(1,trait+1)], geno, plot = T)
 model2 = GWAS(pheno[,c(1,trait+1)], geno, n.PC = 3, plot = T)

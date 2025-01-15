@@ -13,7 +13,7 @@ n.burnInSelProp <- 0.95
 n.selProp <- 0.8
 n.gens <- 50
 n.burnInGens <- 5
-n.sims <- 1
+n.sims <- 100
 n.chr <- 10
 n.RILFams <- 200
 n.indPerRILFam <- 4
