@@ -30,6 +30,34 @@ createRIL <- function(interPop=TRUE) {
   return (c(RIL, parentA, parentB))
 }
 
+createNAM <- function() {
+  refPop <- pops[[1]]
+  refLine <- refPop[runif(1,1,nInd(refPop))]
+  
+  founderLines <- c()
+  for (p in 2:n.nPops) {
+    subPop <- pops[[p]]
+    ind <- subPop[runif(1,1,nInd(subPop))]
+    for (f in 1:10) {
+      ind <- self(ind)
+    }
+    founderLines <- append(founderLines, ind)
+  }
+  
+  crossPlan = matrix(c(rep(1:10), rep(1,10)), nrow=10, ncol=2)
+  F1 <- makeCross2(founderLines, refLine, crossPlan, simParam=SP)
+  F2 <- self(F1)
+  F3 <- self(F2)
+  F4 <- self(F3)
+  F5 <- self(F4)
+  F6 <- self(F5)
+  F7 <- self(F6)
+  F8 <- self(F7)
+  F9 <- self(F8)
+  NAM <- self(F9, nProgeny=n.indPerRILFam)
+  return (NAM)
+}
+
 getABHGeno <- function(RIL, parentA, parentB, genoEnc=c(NA,1,2,3)) {
   # Filter out monomorphic snps
   allSnps <- as.data.frame(t(rbind(pullSnpGeno(parentA),pullSnpGeno(parentB))))

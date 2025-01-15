@@ -36,7 +36,6 @@ getEffectSize <- function(locus,
   if (!hetLocus(locus)) {
     return (NA)
   }
-  
   strs = unlist(strsplit(id, "_"))
   chr = strtoi(strs[1])
   site = strtoi(strs[2])
@@ -44,16 +43,37 @@ getEffectSize <- function(locus,
   fitPre <- mean(fitFunc(gv(pop)))
   pop1 <- editGenome(pop, ind=c(1:popSize), chr=chr, segSites=site, allele=0, simParam=SP)
   pop2 <- editGenome(pop, ind=c(1:popSize), chr=chr, segSites=site, allele=1, simParam=SP)
-  if (methodType == "Additive") {
+  
+  
+  if (methodType == "Additive2") {
     return (abs(mean(gv(pop2)) - mean(gv(pop1))))
   } else if (methodType == "Fitness") {
+    
     return (abs(mean(fitFunc(gv(pop2))) - mean(fitFunc(gv(pop1)))))
   }
 }
 
 # Plots the trait architecture on a genetic basis
 # Works for 1 or 2 trait populations
-traitArchitecture <- function(pop, methodType="Fitness", fitFunc) {
+traitArchitecture <- function(pop, methodType="Additive", fitFunc, trait=1) {
+  
+  if (methodType == "Additive") {
+    qtlGeno <- getUniqueQtl(pop)
+    
+    qtlEffList <- SP$traits[[trait]]
+    qtlEffList <- SP$traits[[trait]]@addEff
+    
+    length(SP$traits[[trait]]@lociLoc)
+    qtlqtlqtlEffRanked <- order(abs(qtlEffList), decreasing=TRUE)
+    qtlEffRanked
+      if (pop@nTraits > 1) {
+        for (t in 2:pop@nTraits) {
+          qtlGeno <- cbind(qtlGeno, pullQtlGeno(pop, trait=t))
+        }
+      }
+      qtlEffList <- SP$traits
+      #@addEff
+  }
   geno <- getUniqueQtl(pop)
   cols <- colnames(geno)
   nLoci <- length(cols)

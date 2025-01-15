@@ -17,11 +17,13 @@ n.sims <- 100
 n.chr <- 10
 n.RILFams <- 200
 n.indPerRILFam <- 4
+n.indPops <- 2
 
 # QTL Mapping Parameters
 n.mappingMethod <- "hk"
 n.errorProb <- 0.001
 n.step <- 1
+n.cores <- 8
 
 # 
 addSnpChip <- TRUE
