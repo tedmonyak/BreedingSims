@@ -1,0 +1,356 @@
+---
+title: "Meta Populations"
+author: "Ted Monyak"
+date: "2025-01-16"
+output: html_document
+description: This notebook contains scripts for developing breeding metapopulations,
+creating mapping populations, and running linkage mapping and GWAS
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
+```
+
+```{r}
+library(AlphaSimR)
+library(ade4)
+library(devtools)
+library(dplyr)
+library(ggplot2)
+library(factoextra)
+library(patchwork)
+library(plotly)
+library(purrr)
+library(qtl)
+library(qtlTools)
+library(reshape2)
+library(rrBLUP)
+library(snow)
+library(tibble)
+library(viridis)
+install_github("jtlovell/qtlTools")
+rm(list = ls())
+
+set.seed(123)
+
+setwd("~/Documents/CSU/R/BreedingSims")
+source("Functions/Fitness.R")
+source("Functions/GenoConversions.R")
+source("Functions/MappingPopulations.R")
+source("Functions/TraitArchitecture.R")
+source("Scripts/GlobalVariables.R")
+source("Scripts/CreateFounderPop.R")
+output_dir <- file.path(getwd(), "Output")
+if (!dir.exists(output_dir)) dir.create(output_dir)
+```
+
+
+Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.
+```{r}
+result_df <- data.frame(sim=rep(1:n.sims, each=3),
+                        traitVal1=numeric(n.sims*3),
+                        traitVal2=numeric(n.sims*3),
+                        pop=character(n.sims*3))
+
+s <-1
+repeat {
+  print(paste0("Sim: ", (s+2)/3))
+  if (s > n.sims*3) {
+    break
+  }
+  pop <- founderPop
+
+  # BURN-IN
+  for (gen in 1:n.burnInGens) {
+    pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
+  }
+  popA <- selectInd(pop, use="rand", nInd=40)
+  popB <- selectInd(pop, use="rand", nInd=40)
+
+  for (gen in 1:n.gens) {
+    if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
+      popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*n.selProp, nCrosses=nInd(popA))
+    }
+    if (mean(twoTraitFitFunc(pheno(popB))) < n.margin) {
+      popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*n.selProp, nCrosses=nInd(popB))
+    }
+  }
+  
+  parentA <- popA[runif(1,1,nInd(popA))]
+  parentB <- popB[runif(1,1,nInd(popB))]
+  F1 <- randCross2(parentA,
+                   parentB,
+                   nCrosses=1,
+                   nProgeny=n.RILFams)
+  F2 <- self(F1)
+  F3 <- self(F2)
+  F4 <- self(F3)
+  F5 <- self(F4)
+  F6 <- self(F5)
+  F7 <- self(F6)
+  F8 <- self(F7)
+  F9 <- self(F8)
+  RIL <- self(F9, nProgeny=n.indPerRILFam)
+  result_df$traitVal1[s] <- meanP(popA)[1]
+  result_df$traitVal2[s] <- meanP(popA)[2]
+  result_df$pop[s] <- "Elite Pop 1"
+  s <- s+1
+  result_df$traitVal1[s] <- meanP(popB)[1]
+  result_df$traitVal2[s] <- meanP(popB)[2]
+  result_df$pop[s] <- "Elite Pop 2"
+  s <- s+1
+  result_df$traitVal1[s] <- meanP(RIL)[1]
+  result_df$traitVal2[s] <- meanP(RIL)[2]
+  result_df$pop[s] <- "RIL"
+  s <- s+1
+}
+
+t1 <- ggplot(data=result_df, aes(x=traitVal1, fill=pop)) +
+  geom_histogram(position='identity', binwidth = 0.05, alpha=0.6) +
+  scale_fill_manual(name = "Population",
+                      values = c("RIL" = "darkblue",
+                                "Elite Pop 1" = "lightblue",
+                                "Elite Pop 2" = "lightpink")) +
+  labs(title="Trait 1")
+
+t2 <- ggplot(data=result_df, aes(x=traitVal2, fill=pop)) +
+  geom_histogram(position='identity', binwidth = 0.05, alpha=0.6) +
+  scale_fill_manual(name = "Population",
+                    values = c("RIL" = "darkblue",
+                               "Elite Pop 1" = "lightblue",
+                               "Elite Pop 2" = "lightpink")) +
+  labs(title="Trait 2")
+
+save_dir <- file.path(output_dir, "EliteVSRIL")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+fname <- file.path(save_dir, "EliteVSRil.pdf")
+ggplot2::ggsave(filename = fname,
+                device = "pdf")
+```
+
+1) Pull out individuals from each population and cross them
+2) Create RILs
+3) Do QTL Mapping
+```{r}
+getSigQtl <- function(RIL, parentA, parentB) {
+  cross <- getCross(RIL, parentA, parentB, "riself")
+  cross <- drop.nullmarkers(cross)
+  phes <- phenames(cross)[1:2]
+  cross <- calc.genoprob(cross, step=n.step, error.prob=n.errorProb)
+  out.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
+                    n.cluster=n.cores)
+  operm.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
+                      n.perm=1000,n.cluster=n.cores)
+  sigQtl <- pullSigQTL(cross,
+                       pheno.col=phes,
+                       s1.output=out.hk,
+                       perm.output=operm.hk,
+                       returnQTLModel=FALSE,
+                       alpha=0.05,
+                       controlAcrossCol=TRUE)
+  
+  actualQtl <- getEffectSizesAndLocations(RIL, trait=1)
+  a <- actualQtl %>%
+    filter(chr=='4')
+  ggplot(data=a, aes(x=pos, y=eff_size)) +
+    geom_bar(stat="identity")
+  print
+  if (saveQtlPlots) {
+    save_dir <- file.path(output_dir, "QtlMapping")
+    if (!dir.exists(save_dir)) dir.create(save_dir)
+    save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+    if (!dir.exists(save_dir)) dir.create(save_dir)
+    fname <- file.path(save_dir, "linkagemap.pdf")
+
+    pdf(fname)
+    cols <- c("blue", "red")
+    plot(out.hk, type="n", ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))), ylab= "LOD Score")
+    for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i])
+    abline(h=summary(operm.hk[1,1]), col="blue", lty = "dotted", lwd=2)
+    abline(h=summary(operm.hk[1,2]), col="red", lty = "dotted", lwd=2)
+    dev.off()
+    
+    geno = rbind(pullQtlGeno(RIL), pullQtlGeno(parentA), pullQtlGeno(parentB))
+    PCA  = dudi.pca(df = geno, center = T, scale = F, scannf = F, nf = 5)
+    (VAF = 100 * PCA$eig[1:5] / sum(PCA$eig)) # variance explained
+    df.PCA = data.frame(
+      "Pop" = c(rep("RIL", RIL@nInd), "Parent A", "Parent B"),
+      "PC1" = PCA$l1$RS1,
+      "PC2" = PCA$l1$RS2)
+    ggplot(df.PCA, aes(x = PC1, y = PC2)) +
+      geom_point(aes(colour = factor(Pop))) +
+      ggtitle("Population structure") +
+      xlab(paste("Pcomp1: ", round(VAF[1], 2), "%", sep = "")) +
+      ylab(paste("Pcomp2: ", round(VAF[2], 2), "%", sep = ""))
+    
+    fname <- file.path(save_dir, "PCA.pdf")
+    ggplot2::ggsave(filename = fname,
+                    device = "pdf")
+    write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+  }
+  return (nrow(sigQtl))
+}
+
+source("Scripts/CreateIndependentPops.R")
+popA <- pops[[1]]
+popB <- pops[[2]]
+res <- createRIL(interPop=TRUE)
+RIL <- res[-(1:2)]
+parentA <- res[1]
+parentB <- res[2]
+
+saveQtlPlots <- TRUE
+getSigQtl(RIL, parentA, parentB)
+saveQtlPlots <- FALSE
+```
+
+QTL Monte Carlo Simulation
+```{r}
+n.sims <- 10
+res.df <- data.frame(sim=rep(1:n.sims, times=2),
+                     type=c(2*n.sims),
+                     nSigQtl=c(2*n.sims))
+for (s in 1:n.sims) {
+  print(paste0("Sim ", s))
+  source("Scripts/CreateIndependentPops.R")
+  
+  res <- createRIL(interPop=TRUE)
+  RIL <- res[-(1:2)]
+  parentA <- res[1]
+  parentB <- res[2]
+  #RIL <- res[1:(length(res)-2)]
+  #parentA <- res[length(res)-1]
+  #parentB <- res[length(res)]
+  nQtl <- getSigQtl(RIL, parentA, parentB)
+  res.df$type[s] <- "Trans-elite"
+  res.df$nSigQtl[s] <- nQtl
+  
+  res <- createRIL(interPop=FALSE)
+  RIL <- res[-(1:2)]
+  parentA <- res[1]
+  parentB <- res[2]
+  #RIL <- res[1:(length(res)-2)]
+  #parentA <- res[length(res)-1]
+  #parentB <- res[length(res)]
+  nQtl <- getSigQtl(RIL, parentA, parentB)
+  res.df$type[s+n.sims] <- "Cis-elite"
+  res.df$nSigQtl[s+n.sims] <- nQtl
+}
+
+ggplot(data=res.df, aes(x=nSigQtl, fill=type)) +
+  geom_histogram(position='identity', binwidth = 1, col='black', alpha=0.9) +
+  scale_fill_manual(name = "Parental Cross Type",
+                    values = c("Trans-elite" = "orange",
+                               "Cis-elite" = "darkgreen")) +
+  labs(title="# Significant QTL Obtained from Linkage Mapping", xaxis="# QTL")
+
+save_dir <- file.path(output_dir, "AverageNumSignificantQtl")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+fname <- file.path(save_dir, "significantqtl.pdf")
+ggplot2::ggsave(filename = fname,
+                device = "pdf")
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+```
+
+```{r}
+n.popSize <- 100
+n.qtlPerChr <- 5
+n.segSites <- 10
+n.markers <- 10
+source("Scripts/CreateFounderPop.R")
+QtlGeno <- pullQtlGeno(founderPop, trait=1)
+QtlEff = as.data.frame(SP$traits[[1]]@addEff)
+
+```
+
+Create NAM and DP Populations
+```{r}
+n.nPops <- 11
+n.subPopSize <- 80
+source("Scripts/CreateIndependentPops.R")
+NAM <- createNAM()
+DP <- createDP()
+```
+
+
+GWAS
+```{r}
+pop <- NAM
+
+geno <- getGwasGeno(pop)
+pheno = data.frame(id = 1:pop@nInd,
+                    pheno  = pop@pheno)
+trait <- 1
+model1 = GWAS(pheno[,c(1,trait+1)], geno, plot = T)
+model2 = GWAS(pheno[,c(1,trait+1)], geno, n.PC = 3, plot = T)
+
+model1$Trait1 = 10 ^ (-model1$pheno.Trait1)
+model2$Trait1 = 10 ^ (-model2$pheno.Trait1)
+
+model1$Trait2 = 10 ^ (-model1$pheno.Trait2)
+model2$Trait2 = 10 ^ (-model2$pheno.Trait2)
+
+qtl1 = as.vector(getQtlMap(trait = 1)$id)
+qtl2 = as.vector(getQtlMap(trait = 2)$id)
+par(mfrow = c(2, 1))
+manhattan(model1, chr = "chr", bp = "pos", p = "pheno.Trait2", snp = "snp", highlight = qtl2,
+  main = "Marker", ylim = c(0,10))
+manhattan(model2, chr = "chr", bp = "pos", p = "pheno.Trait2", snp = "snp", highlight = qtl2,
+  main = "Marker + principal components", ylim = c(0,10))
+# Check QQ-plot
+par(mfrow = c(2, 1))
+qq(model1$Trait1, main = "Marker")
+qq(model2$Trait1, main = "Marker + principal components")
+```
+
+QTL stuff not being used
+```{r}
+#plot(cross)
+#nmar(cross)
+#plot.map(pull.map(cross),est.map(cross))
+#summary(operm.hk, alpha=0.05, pvalues=TRUE)
+
+
+#mar <- find.marker(cross, chr=10, pos=63.3)
+#plotPXG(cross, marker=mar)
+#effectplot(cross, mname1=mar)
+#out.cim <- cim(cross, n.marcovar=3)
+#plot(out.cim)
+
+data("multitrait")
+data(multitrait)
+data(map10)
+plot(map10)
+simcross <- sim.cross(map10, type="f2", n.ind=100, missing.prob=0.02)
+plot.map(pull.map(simcross),est.map(simcross))
+geno.table(simcross, chr=1)
+
+cross <- est.rf(cross)
+plotRF(cross)
+plotMissing(cross)
+geno.table(cross, chr=1)
+cg <- comparegeno(cross)
+hist(cg[lower.tri(cg)], breaks=seq(0, 1, len=101), xlab="No. matching genotypes")
+print(dup <- findDupMarkers(cross, exact.only=FALSE))
+rug(cg[lower.tri(cg)])
+gt <- geno.table(cross)
+gt[gt$P.value < 0.05/totmar(cross),]
+
+g <- pull.geno(cross)
+gfreq <- apply(g, 1, function(a) table(factor(a, levels=1:3)))
+gfreq <- t(t(gfreq) / colSums(gfreq))
+par(mfrow=c(1,3), las=1)
+for(i in 1:3) {
+  plot(gfreq[i,], ylab="Genotype frequency", main=c("AA", "AB", "BB")[i], ylim=c(0,1))
+}
+
+newMap <- est.map(cross, error.prob=0.01)
+plotMap(cross, newMap)
+```

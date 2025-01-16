@@ -1,0 +1,569 @@
+---
+title: "Adaptive Walks"
+output: html_notebook
+author: Ted Monyak
+description: This notebook contains scripts for understanding the dynamics of adaptive walks.
+---
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
+```
+
+Imports
+```{r}
+library(AlphaSimR)
+library(devtools)
+library(dplyr)
+library(ggplot2)
+library(factoextra)
+library(patchwork)
+library(plotly)
+library(purrr)
+library(reshape2)
+library(snow)
+library(tibble)
+library(viridis)
+rm(list = ls())
+
+set.seed(123)
+
+source("Functions/Fitness.R")
+source("Functions/TraitArchitecture.R")
+source("Scripts/GlobalVariables.R")
+source("Scripts/CreateFounderPop.R")
+
+output_dir <- file.path(getwd(), "Output")
+if (!dir.exists(output_dir)) dir.create(output_dir)
+```
+
+View a fitness landscape
+```{r}
+p <- plotFitnessLandscape()
+
+save_dir <- file.path(output_dir, "FitnessFunctions")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+fname <- file.path(save_dir, "fitness_function.html")
+htmlwidgets::saveWidget(as_widget(p), fname)
+```
+
+Plot different trait architectures according to different algorithms
+```{r}
+save_dir <- file.path(output_dir, "TraitArchitecture")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+# Additive effects
+methodType <- "Additive"
+g <- plotTraitArchitecture(founderPop, methodType)
+ggplot2::ggsave(filename = paste0("traitarchitecture_", methodType, ".pdf"),
+                path=save_dir,
+                device = "pdf")
+
+# Effect of each allele on fitness
+methodType <- "Fitness"
+g <- plotTraitArchitecture(founderPop, methodType)
+ggplot2::ggsave(filename = paste0("traitarchitecture_", methodType, ".pdf"),
+                path=save_dir,
+                device = "pdf")
+
+p <- plot3dPopulationFitness(founderPop, calculateFitnessTwoTrait)
+
+fname <- file.path(save_dir, "3dpopulationfitness.html")
+htmlwidgets::saveWidget(as_widget(p), fname)
+```
+
+Simulate several adaptive walks with different population sizes
+```{r}
+# Different starting population sizes
+n.popSizes <- c(40,200,1000)
+
+# Don't use a SNP chip for these simulations
+addSnpChip <- FALSE
+
+fig <- plot_ly()
+fit_df <- data.frame(gen=1:n.gens,
+                   fitness=numeric(n.gens),
+                   traitValA=numeric(n.gens),
+                   traitValB=numeric(n.gens))
+
+# Iterate through each population size
+for (p in c(1:length(n.popSizes))) {
+  n.popSize <- n.popSizes[p]
+  print(n.popSize)
+  # Create a new population of that size
+  source("Scripts/CreateFounderPop.R")
+  pop <- founderPop
+  # Iterate through the generations, update the result dataframe, and advance
+  # progeny based on the two trait fitness funcion
+  for(gen in 1:n.gens) {
+    fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
+    fit_df$traitValA[gen] <- meanG(pop)[1]
+    fit_df$traitValB[gen] <- meanG(pop)[2]
+    pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*(n.selProp), nCrosses=n.popSize)
+  }
+  # Add a trace to represent this population's adaptive walk
+  fig <- add_trace(
+    fig,
+    fit_df,
+    name = n.popSize,
+    x = fit_df$traitValA,
+    y = fit_df$traitValB,
+    z = fit_df$fitness,
+    type = 'scatter3d',
+    mode = 'lines',
+    opacity = 1,
+    color = p,
+    line = list(width = 5)
+  )
+  
+  
+}
+
+fig <- fig %>%
+  layout(legend=list(title=list(text='Population Size')),
+         scene = list(xaxis = list(title = "Trait A"),
+                      yaxis = list(title = "Trait B"),
+                      zaxis = list(title = "Fitness"),
+                      aspectmode='cube')) %>% hide_colorbar()
+
+
+save_dir <- file.path(output_dir, "DifferentPopulationSizes")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+fname <- file.path(save_dir, paste0("populationSizes_", n.popSizes[1], ",", n.popSizes[2], ",", n.popSizes[3], ".html"))
+htmlwidgets::saveWidget(as_widget(fig), fname)  
+```
+
+Overlay an adaptive walk over a fitness landscape, and save 3D and 2D versions
+TODO: fix the 3D version
+```{r}
+fig <- plot_ly()
+fit_df <- data.frame(gen=1:n.gens,
+                   fitness=numeric(n.gens),
+                   traitValA=numeric(n.gens),
+                   traitValB=numeric(n.gens))
+
+pop <- founderPop
+
+for(gen in 1:n.gens) {
+  fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
+  fit_df$traitValA[gen] <- meanG(pop)[1]
+  fit_df$traitValB[gen] <- meanG(pop)[2]
+  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*n.selProp, nCrosses=n.popSize)
+}
+
+save_dir <- file.path(output_dir, "OverlayAdaptiveWalk")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+
+plotType <- "CONTOUR"
+pc <- overlayWalkOnLandscape(fit_df, type=plotType, calculateFitnessTwoTrait)
+fname <- file.path(save_dir, paste0("adaptivewalk_", plotType, ".html"))
+htmlwidgets::saveWidget(as_widget(pc), fname)
+
+plotType <- "SURFACE"
+ps <- overlayWalkOnLandscape(fit_df, type=plotType, calculateFitnessTwoTrait)
+fname <- file.path(save_dir, paste0("adaptivewalk_", plotType, ".html"))
+htmlwidgets::saveWidget(as_widget(ps), fname)
+
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+```
+
+Simulate an adaptive walk, and plot the following curve:
+#segregating QTL/#segregating loci
+
+Original question: out of segregating alleles left in the population, how many
+of them would increase fitness? Is this even a valid question?
+
+TODO:
+- How does this change with size of allele?
+- How does size of 'fitness delta' change over generations?
+- Simualate mutations for a single individual to figure out P(allelic substitution is favorable),
+should reflect FKO
+- P(mutation gets fixed) - show that this matches Kimura
+- Compare adaptive walks for DH/inbred population where there are new mutations VS
+population w/standing genetic variation
+```{r}
+n.gens <- 200
+
+# Reset variables
+source("Scripts/CreateFounderPop.R")
+source("Scripts/GlobalVariables.R")
+
+pop <- founderPop
+df <- data.frame(gen=c(),
+                 fitness=c(),
+                 traitVal1=c(),
+                 traitVal2=c(),
+                 percFitInc=c(),
+                 segAlleles=c(),
+                 segQtl=c())
+
+# Iterate through the generations
+for (gen in 1:n.gens) {
+  print(gen)
+  # Counter variables
+  numHetLoci = 0
+  numHetQtl = 0
+  numInc = 0
+
+  # Get all of the loci from the population
+  segSiteGeno <- pullSegSiteGeno(pop)
+  # Get all of the QTL from the population (a sampling of the segSiteGeno)
+  qtlGeno <- getUniqueQtl(pop)
+  qtlLoci <- colnames(qtlGeno)
+  loci <- colnames(segSiteGeno)
+  nLoci <- ncol(segSiteGeno)
+  # Iterate through all of the loci
+  for (l in 1:ncol(segSiteGeno)) {
+    id <- loci[l]
+    locus = segSiteGeno[,l]
+    # Check if the locus is segregating
+    if (hetLocus(locus)) {
+      # Increment the counter
+      numHetLoci <- numHetLoci + 1
+      # Determine the effect size - this is where the bug is
+      #e <- getEffectSize(locus, id, pop, "Fitness")
+      #if (e > 0) {
+      #  numInc <- numInc +1
+      #}
+      # If the locus is a QTL, then it has an effect size
+      if (id %in% qtlLoci) {
+        numHetQtl <- numHetQtl + 1
+      }
+    }
+  }
+
+  # Calculate the ratio of segregating QTL to segregating alleles
+  if (numHetLoci == 0) {
+    perc <- 0
+  } else {
+    perc <- (numHetQtl / numHetLoci)
+  }
+  df <- rbind(df, data.frame(gen=gen,
+                             fitness=mean(twoTraitFitFunc(gv(pop))),
+                             traitVal1=meanG(pop)[1],
+                             traitVal2=meanG(pop)[2],
+                             percFitInc=perc,
+                             segAlleles=numHetLoci,
+                             segQtl=numHetQtl))
+  # If the population is within n.margin, terminate the simulation
+  if (mean(twoTraitFitFunc(gv(pop))) >= n.margin) {
+    break
+  }
+  # Advance the top progeny according to the fitness function
+  pop <- selectCross(pop=pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.selProp, nCrosses=nInd(pop))
+}
+
+save_dir <- file.path(output_dir, "BeneficialAlleles")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+fname <- file.path(save_dir, "beneficialalleles.pdf")
+pdf(fname)
+
+# Plot the ratio of segregating QTL to segregating alleles, along with fitness
+par(mar = c(5, 5, 3, 5) + 0.3)
+plot(df$gen, df$fitness, type="l", lwd = "3", col=2, xlab = "Generation", ylab = "Fitness")
+par(new = TRUE) 
+plot(df$gen, df$percFitInc, type="l", lwd = "3", col = 3, axes = FALSE, xlab = "", ylab = "") 
+axis(side = 4, at = pretty(range(df$percFitInc)))
+mtext("% of Segregating alleles that are QTL", side = 4, line = 3)
+par(xpd=TRUE)
+legend("right",
+  c("Fitness", "% Alleles"),
+       lty = 1,
+       lwd = 3,
+       col = 2:3)
+dev.off()
+```
+
+This block runs n.nPops * n.sims Monte Carlo simulations of different populations to determine
+the change in the average effect size of alleles that are fixed along the adaptive walk,
+saving the order in which the alleles are fixed
+n.nPops populations are created, and each one undergoes n.sims unique adaptive walks
+```{r}
+n.popSize <- 500
+n.gens <- 100
+n.sims <- 20
+n.nPops <- 10
+n.selProp <- 0.95
+addSnpChip <- FALSE
+
+fig <- plot_ly()
+
+# Tidy dataframe to store the order in which each allele is fixed, and the effect size
+eff_size_df <- data.frame(orderFixed=c(),
+                          effectSizeA=c(),
+                          effectSizeF=c())
+# Create a new population n.nPops times
+for (p in 1:n.nPops) {
+  print(paste0("Pop: ", p))
+  source("Scripts/CreateFounderPop.R")
+  for (s in 1:n.sims) {
+    pop <- founderPop
+    pop_df <- data.frame(gen=1:n.gens,
+                         fitness=numeric(n.gens),
+                         traitValA=numeric(n.gens),
+                         traitValB=numeric(n.gens))
+  
+    print(paste0("Sim: ", s))
+    # idx is the order in which an allele is fixed along an adaptive walk
+    idx <- 1
+    # whether or not to increment the idx counter. Multiple alleles may be fixed
+    # in the same generation, so this cannot be incremented until each locus
+    # has been examined
+    inc <- FALSE
+    
+    for (gen in 1:n.gens) {
+      pop_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
+      pop_df$traitValA[gen] <- meanP(pop)[1]
+      pop_df$traitValB[gen] <- meanP(pop)[2]
+      # Keep track of the current population
+      prevPop <- pop
+      # Advance the population based on fitness
+      pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.selProp, nCrosses=nInd(pop))
+      # Get the qtl genotypes from the current and new populations, so we can compare them
+      prevGeno <- getUniqueQtl(prevPop)
+      newGeno <- getUniqueQtl(pop)
+      cols <- colnames(newGeno)
+      n.loci <- length(cols)
+      # Iterate through all loci
+      for (l in 1:n.loci) {
+        id <- cols[l]
+        prevLocus = prevGeno[,l]
+        newLocus = newGeno[,l]
+        # Check if the allele was segregating and became fixed in this generation
+        if (hetLocus(prevLocus) && !hetLocus(newLocus)) {
+          # Increment the order counter after this generation
+          inc <- TRUE
+          # Determine the effect size, based on additivity
+          effSizeA <- getEffectSize(prevLocus,
+                                   id,
+                                   prevPop,
+                                   "Additive")
+          # Determine the effect size based on fitness
+          effSizeF <- getEffectSize(prevLocus,
+                                    id,
+                                    prevPop,
+                                    "Fitness")
+          # Update the result dataframe
+          new_row <- data.frame(orderFixed=c(idx),
+                                effectSizeA=c(effSizeA),
+                                effectSizeF=c(effSizeF))
+          eff_size_df <- rbind(eff_size_df, new_row)
+        }
+      }
+      
+      # Check whether to increment the order counter and reset 'inc'
+      if (inc) {
+        idx <- idx + 1
+        inc <- FALSE
+      }
+      # If the population is within n.margin, terminate the simulation
+      #if (mean(twoTraitFitFunc(gv(subPop))) >= n.margin) {
+        #break
+      #}
+      
+    }
+    # Add the adaptive walk of the sub-population
+    fig <- add_trace(
+      fig,
+      pop_df,
+      name = s,
+      x = pop_df$traitValA,
+      y = pop_df$traitValB,
+      z = pop_df$fitness,
+      type = 'scatter3d',
+      mode = 'lines',
+      opacity = 1,
+      color = s,
+      line = list(width = 2)
+    )
+  }
+}
+
+save_dir <- file.path(output_dir, "AverageEffectSize")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+# Determine the average additive effect size at each 'step'
+grouped_df_a <- eff_size_df %>%
+  group_by(orderFixed) %>%
+  summarize(meanEffectSize = mean(effectSizeA))
+
+g_a <- ggplot(data=grouped_df_a, aes(x=orderFixed, y=meanEffectSize)) +
+  geom_bar(stat="identity") +
+  geom_smooth(formula = y ~ a^x)
+
+ggplot2::ggsave(filename = "average_effect_size_additive.pdf",
+                path=save_dir,
+                device = "pdf")
+
+# Determine the average fitness effect size at each 'step'
+grouped_df_f <- eff_size_df %>%
+  group_by(orderFixed) %>%
+  summarize(meanEffectSize = mean(effectSizeF))
+
+g_f <- ggplot(data=grouped_df_f, aes(x=orderFixed, y=meanEffectSize)) +
+  geom_bar(stat="identity") +
+  geom_smooth(formula = y ~ a^x)
+
+ggplot2::ggsave(filename = "average_effect_size_fitness.pdf",
+                path=save_dir,
+                device = "pdf")
+
+# Create a plot with the adaptive walks
+p <- fig %>%
+  layout(legend=list(title=list(text='Population')),
+         showlegend=FALSE,
+         scene = list(xaxis = list(title = "Trait A"),
+                      yaxis = list(title = "Trait B"),
+                      zaxis = list(title = "Fitness"),
+                      aspectmode='cube')) %>% hide_colorbar()
+fname <- file.path(save_dir, "adaptivewalk.html")
+htmlwidgets::saveWidget(as_widget(p), fname)
+
+```
+
+This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
+```{r}
+source("GlobalVariables.R")
+source("Scripts/CreateFounderPop.R")
+fit_df <- data.frame(gen=1:n.burnInGens,
+                 fitness=numeric(n.burnInGens),
+                 traitValA=numeric(n.burnInGens),
+                 traitValB=numeric(n.burnInGens))
+pop <- founderPop
+
+# Burn-in generations
+for (gen in 1:n.burnInGens) {
+  fit_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
+  fit_df$traitValA[gen] <- meanP(pop)[1]
+  fit_df$traitValB[gen] <- meanP(pop)[2]
+  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
+}
+
+# Create 2 sub populations by randomly selecting individuals
+popA <- selectInd(pop, use="rand", nInd=n.subPopSize)
+popB <- selectInd(pop, use="rand", nInd=n.subPopSize)
+
+# Create dataframes for each subpopulation, initializing with current values
+popA_df <- data.frame(gen=c(1),
+                 fitness=c(mean(twoTraitFitFunc(pheno(popA)))),
+                 traitValA=c(meanP(popA)[1]),
+                 traitValB=c(meanP(popA)[2]))
+popB_df <- data.frame(gen=c(1),
+                 fitness=c(mean(twoTraitFitFunc(pheno(popB)))),
+                 traitValA=c(meanP(popB)[1]),
+                 traitValB=c(meanP(popB)[2]))
+
+# Iterate through the generations
+for (gen in 1:n.gens) {
+  # If popA is within the margin of the fitness optimum, don't progress it any further
+  if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
+    # Advance the population
+    popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*n.selProp, nCrosses=nInd(popA))
+    # Update the dataframe with new values
+    popA_df <- rbind(popA_df, data.frame(gen=gen,
+                                       fitness= mean(twoTraitFitFunc(pheno(popA))),
+                                       traitValA=meanP(popA)[1],
+                                       traitValB=meanP(popA)[2]))
+    
+  }
+  # If popB is within the margin of the fitness optimum, don't progress it any further
+  if (mean(twoTraitFitFunc(pheno(popB))) < n.margin) {
+    # If popA is within the margin of the fitness optimum, don't progress it any further
+    popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*n.selProp, nCrosses=nInd(popB))
+    # Update the dataframe with new values
+    popB_df <- rbind(popB_df, data.frame(gen=gen,
+                                       fitness= mean(twoTraitFitFunc(pheno(popB))),
+                                       traitValA=meanP(popB)[1],
+                                       traitValB=meanP(popB)[2]))
+  }
+}
+# Update rownames
+rownames(popA_df) <- 1:nrow(popA_df)
+rownames(popB_df) <- 1:nrow(popB_df)
+
+# Plot the adaptive walks
+fig <- plot_ly()
+fig <- add_trace(
+  fig,
+  fit_df,
+  name = "Burn In",
+  x = fit_df$traitValA,
+  y = fit_df$traitValB,
+  z = fit_df$fitness,
+  type = 'scatter3d',
+  mode = 'lines',
+  opacity = 1,
+  color = 'yellow',
+  line = list(width = 5)
+)
+
+fig <- add_trace(
+    fig,
+    popA_df,
+    name = "Pop A",
+    x = popA_df$traitValA,
+    y = popA_df$traitValB,
+    z = popA_df$fitness,
+    type = 'scatter3d',
+    mode = 'lines',
+    opacity = 1,
+    color = 'red',
+    line = list(width = 5)
+  )
+
+fig <- add_trace(
+    fig,
+    popB_df,
+    name = "Pop B",
+    x = popB_df$traitValA,
+    y = popB_df$traitValB,
+    z = popB_df$fitness,
+    type = 'scatter3d',
+    mode = 'lines',
+    opacity = 1,
+    color = 'blue',
+    line = list(width = 5)
+  )
+
+
+p <- fig %>%
+  layout(legend=list(title=list(text='Population')),
+         showlegend=FALSE,
+         scene = list(xaxis = list(title = "Trait A"),
+                      yaxis = list(title = "Trait B"),
+                      zaxis = list(title = "Fitness"),
+                      aspectmode='cube')) %>% hide_colorbar()
+
+save_dir <- file.path(output_dir, "DivergingPopulations")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+fname <- file.path(save_dir, "adaptivewalks.html")
+htmlwidgets::saveWidget(as_widget(p), fname)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+fname <- file.path(save_dir, "traitarchitecture.pdf")
+pdf(fname)
+
+(plotTraitArchitecture(popA, "Fitness", twoTraitFitFunc) |
+    plotTraitArchitecture(popB, "Fitness",twoTraitFitFunc))
+
+dev.off()
+```

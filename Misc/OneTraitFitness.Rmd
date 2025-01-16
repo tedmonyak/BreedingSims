@@ -1,0 +1,146 @@
+---
+title: "One Trait Fitness"
+author: "Ted Monyak"
+date: "2025-01-16"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
+```
+
+Imports
+```{r}
+library(AlphaSimR)
+library(devtools)
+library(dplyr)
+library(ggplot2)
+library(viridis)
+rm(list = ls())
+
+set.seed(123)
+
+source("Functions/Fitness.R")
+source("Scripts/GlobalVariables.R")
+
+output_dir <- file.path(getwd(), "Output")
+if (!dir.exists(output_dir)) dir.create(output_dir)
+```
+
+Show that all populations converge to the same optimum
+```{r}
+# Initial trait values
+initTraitVals <- c(-3,-2,-1,1,2,3)
+n.sims <- length(initTraitVals)
+n.popSize <- 50
+n.segSites <- 50
+
+# Create tidy dataframe to store results, with length n.gens * n.sims
+df <- data.frame(gen=rep(1:n.gens, times=n.sims),
+                 fitness=numeric(n.gens*n.sims),
+                 initialVal = numeric(n.gens*n.sims),
+                 traitVal=numeric(n.gens*n.sims))
+
+# Iterate through each simulation
+for (s in 1:n.sims) {
+  initVal <- initTraitVals[s]
+  # Create quick population
+  founders = quickHaplo(
+     nInd=n.popSize,
+     nChr=n.chr,
+     segSites=n.segSites
+  )
+  SP <- SimParam$new(founders)
+  # Set the initial variance to be one-tenth of the initial mean trait value
+  SP$addTraitA(
+    mean=initVal,
+    var=abs(initVal/10),
+    nQtlPerChr=n.qtlPerChr
+  )
+  SP$setVarE(h2=n.h2)
+  pop <- newPop(founders, simParam=SP)
+
+  # Iterate through the generations
+  for(gen in 1:n.gens) {
+    # Set index based on the simulation and generation numbers
+    idx = (s-1)*n.gens + gen
+    # Calculate fitness
+    df$fitness[idx] <- mean(oneTraitFitFunc(pheno(pop)))
+    df$traitVal[idx] <- meanP(pop)
+    df$initialVal[idx] <- initVal
+    # Advance progeny according to individuals that have a phenotype closest to the optimum of zero
+    pop <- selectCross(pop=pop, trait=oneTraitFitFunc, nInd=n.popSize/2, nCrosses=n.popSize)
+  }
+}
+
+# Cast as a string to use it as a factor
+df$initialVal = as.character(df$initialVal)
+
+# Create a ggplot with the results
+g <- ggplot(data=df, aes(x=gen, y=traitVal)) +
+  geom_line(aes(color = initialVal)) +
+  labs(x = "Generation", y = "Trait Value")
+
+save_dir <- file.path(output_dir, "ConvergingFitness")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+ggplot2::ggsave(filename = "converging_fitness.pdf",
+                path=save_dir,
+                device = "pdf")
+```
+
+Plot Trait Value against Fitness for 1 Trait
+```{r}
+# Create a base population
+founders = quickHaplo(
+   nInd=n.popSize,
+   nChr=n.chr,
+   segSites=n.segSites
+)
+SP <- SimParam$new(founders)
+SP$addTraitA(
+  nQtlPerChr=n.qtlPerChr,
+  mean=n.initTraitVal,
+  var=n.var,
+)
+SP$setVarE(h2=n.h2)
+pop <- newPop(founders, simParam=SP)
+
+fit_df <- data.frame(gen=1:n.gens,
+                 fitness=numeric(n.gens),
+                 traitVal=numeric(n.gens))
+
+# At each generation, store the fitness value, and the trait value
+for(gen in 1:n.gens) {
+  fit_df$fitness[gen] <- mean(oneTraitFitFunc(pheno(pop)))
+  fit_df$traitVal[gen] <- meanP(pop)
+  pop <- selectCross(pop=pop, trait=oneTraitFitFunc, nInd=n.popSize/2, nCrosses=n.popSize)
+}
+
+save_dir <- file.path(output_dir, "TraitValVsFitness")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+# Plot trait value and fitness on the same graph
+fname <- file.path(save_dir, "traitvalue_vs_fitness.pdf")
+pdf(fname)
+par(mar = c(5, 5, 3, 5) + 0.3)
+plot(fit_df$gen, fit_df$traitVal, type="l", lwd = "3", col=2, xlab = "Generation", ylab = "Trait Value")   
+par(new = TRUE) 
+plot(fit_df$gen, fit_df$fitness, type="l", lwd = "3", col = 3, axes = FALSE, xlab = "", ylab = "") 
+axis(side = 4, at = pretty(range(fit_df$fitness)))
+mtext("Fitness", side = 4, line = 3)
+par(xpd=TRUE)
+legend("right",
+  c("Trait Value", "Fitness"),
+       lty = 1,
+       lwd = 3,
+       col = 2:3)
+dev.off()
+```
