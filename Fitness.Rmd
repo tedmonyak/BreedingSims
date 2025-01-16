@@ -14,6 +14,7 @@ library(ggplot2)
 library(factoextra)
 library(patchwork)
 library(plotly)
+library(purrr)
 library(qtl)
 library(qtlTools)
 library(reshape2)
@@ -714,7 +715,6 @@ Pull out individuals from each population and cross them
 Create RILs
 ```{r}
 getSigQtl <- function(RIL, parentA, parentB) {
-  
   cross <- getCross(RIL, parentA, parentB, "riself")
   cross <- drop.nullmarkers(cross)
   phes <- phenames(cross)[1:2]
@@ -766,13 +766,9 @@ getSigQtl <- function(RIL, parentA, parentB) {
   return (nrow(sigQtl))
 }
 
-n.subPopSize <- 100
-n.nPops <- 2
 source("CreateIndependentPops.R")
 popA <- pops[[1]]
 popB <- pops[[2]]
-#popA <- popA_popB[1:n.subPopSize]
-#popB <- popA_popB[(n.subPopSize+1):(n.subPopSize*2)]
 res <- createRIL(interPop=TRUE)
 RIL <- res[1:(length(res)-2)]
 parentA <- res[length(res)-1]
@@ -828,69 +824,37 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 ```
 
 ```{r}
-n.popSize <- 10
+n.popSize <- 200
 n.qtlPerChr <- 5
+n.segSites <- 10
+n.markers <- 10
 source("CreateFounderPop.R")
 QtlGeno <- pullQtlGeno(foundingPop, trait=1)
 QtlEff = as.data.frame(SP$traits[[1]]@addEff)
 
 ```
 
-
-
-Create NAM and GWAS Populations
+Create NAM and DP Populations
 ```{r}
 n.nPops <- 11
 n.subPopSize <- 80
 source("CreateIndependentPops.R")
 NAM <- createNAM()
-gwasPop <- c(pops[[1]], pops[[2]])
+DP <- c()
+for (p in 1:n.nPops) {
+  DP <- append(DP, pops[[p]])
+}
 ```
 
 
 GWAS
 ```{r}
-n.popSize <- 100
-n.segSites <- 10
-n.markers <- 5
-source("CreateFounderPop.R")
-pop <- foundingPop
-snpGeno <- as.data.frame(pullSnpGeno(pop))
-snpGeno <- snpGeno[sapply(snpGeno, function(x) length(unique(x)) > 1)]
+pop <- NAM
 
-genMap <- as.data.frame(unlist(SP$genMap))
-rownames(genMap) <- sub(".*\\.", "", rownames(genMap))
-colnames(genMap) <- "pos"
-genMap <- rownames_to_column(genMap, "snp")
-
-geno = data.frame(
-  snp = colnames(snpGeno),
-  chr = numeric(length(colnames(snpGeno))),
-  #pos = numeric(length(colnames(snpGeno))),
-  t(snpGeno - 1)
-)
-geno <- geno %>%
-  mutate(chr = sub("_.*", "", snp))
-
-genMap["snp"]
-geno2 <- merge(x=geno, y=genMap, by="snp", all.x = TRUE)
-geno2 <- geno[,c(1,2)]
-genMap[["1_2"]]
-
-
-geno["snp"]
-geno["pos"] <- genMap[geno["snp"]]
-geno["pos"] <- lapply(geno["pos"], function(x) genMap[geno$snp])
-lapply
-geno <- geno %>%
-  mutate(pos = genMap$`1`[snp])
-  #mutate(pos = strtoi(sub(".*_", "", snp)))
-colnames(geno)[-c(1:3)] = 1:pop@nInd
-
-
+geno <- getGwasGeno(pop)
 pheno = data.frame(id = 1:pop@nInd,
                     pheno  = pop@pheno)
-trait <- 2
+trait <- 1
 model1 = GWAS(pheno[,c(1,trait+1)], geno, plot = T)
 model2 = GWAS(pheno[,c(1,trait+1)], geno, n.PC = 3, plot = T)
 

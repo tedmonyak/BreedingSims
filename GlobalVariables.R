@@ -17,7 +17,7 @@ n.sims <- 100
 n.chr <- 10
 n.RILFams <- 200
 n.indPerRILFam <- 4
-n.indPops <- 2
+n.nPops <- 2
 
 # QTL Mapping Parameters
 n.mappingMethod <- "hk"
@@ -52,6 +52,7 @@ getParams <- function() {
     chr=n.chr,
     RILFams=n.RILFams,
     indPerRILFam=n.indPerRILFam,
+    nPops=n.nPops,
     mappingMethod=n.mappingMethod,
     errorProb=n.errorProb,
     step=n.step

@@ -93,16 +93,51 @@ getABHGeno <- function(RIL, parentA, parentB, genoEnc=c(NA,1,2,3)) {
   return (output)
 }
 
+getGwasGeno <- function(pop) {
+  snpGeno <- as.data.frame(pullSnpGeno(pop))
+  snpGeno <- snpGeno[sapply(snpGeno, function(x) length(unique(x)) > 1)]
+  
+  genMap <- as.data.frame(unlist(SP$genMap))
+  rownames(genMap) <- sub(".*\\.", "", rownames(genMap))
+  colnames(genMap) <- "pos"
+  genMap <- rownames_to_column(genMap, "snp")
+  
+  geno = data.frame(
+    snp = colnames(snpGeno),
+    chr = numeric(length(colnames(snpGeno))),
+    t(snpGeno - 1)
+  )
+  colnames(geno)[-c(1:2)] = 1:pop@nInd
+  geno <- geno %>%
+    mutate(chr = sub("_.*", "", snp))
+  
+  geno <- merge(x=geno, y=genMap, by="snp")
+  geno <- geno[,c("snp", "chr", "pos", c(1:pop@nInd))]
+}
+
+
 getCross <- function(pop, parentA, parentB, popType) {
-  snpGeno <- getABHGeno(pop, parentA, parentB)
+  genMap <- as.data.frame(unlist(SP$genMap))
+  rownames(genMap) <- sub(".*\\.", "", rownames(genMap))
+  colnames(genMap) <- "pos"
+  
+  snpGeno <- as.data.frame(t(getABHGeno(pop, parentA, parentB)))
+  
+  snpGeno <- merge(snpGeno, genMap, by="row.names")
+  rownames(snpGeno) <- snpGeno$Row.names
+  snpGeno <- snpGeno[c(-1)]
+  snpGeno <- as.data.frame(t(snpGeno))
+  
   chrs <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
   pheno <- data.frame(pheno=pop@pheno)
   geno <- list()
   for (c in chrs) {
+    # Get only the snps from chromosome 'c'
     snps <- snpGeno[,grepl(paste0(c,"_"), colnames(snpGeno))]
-    chr_snps <- colnames(snps)
-    chr_snps <- sapply(chr_snps, function(x) as.numeric(strsplit(x, split="_")[[1]][2])/10)
-    chr_geno <- snps
+    chr_geno <- data.matrix(snps[c(-length(rownames(snps))),])
+    chr_snps <- snps["pos",]
+    chr_snps <- sapply(chr_snps, function(x) as.numeric(x)*100)
+    
     geno[[c]] <- list()
     attributes(geno[[c]])$class<-"A"
     geno[[c]]$"data" <- chr_geno
