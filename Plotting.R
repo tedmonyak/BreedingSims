@@ -96,6 +96,7 @@ plot3dPopulationFitness <- function(pop, fitCalc) {
     df$traitB[i] <- gv(pop)[i,2]
     df$fitness[i] <- fitCalc(df$traitA[i], df$traitB[i])
   }
+  fig <- plot_ly()
   fig <- plot_ly() %>%
     layout(scene = list(xaxis = list(title = "Trait 1"),
                         yaxis = list(title = "Trait 2"),
@@ -114,8 +115,8 @@ plot3dPopulationFitness <- function(pop, fitCalc) {
   return (fig)
 }
 
-plotTraitArchitecture <- function(pop, methodType="Fitness", fitFunc) {
-  eff_sizes <- traitArchitecture(pop, methodType, fitFunc)
+plotTraitArchitecture <- function(pop, methodType="Additive", trait=1) {
+  eff_sizes <- traitArchitecture(pop, methodType, trait)
   g <- ggplot(data=eff_sizes, aes(x=reorder(id, -eff_size), y=eff_size)) +
     geom_bar(stat="identity") +
     labs(x = "Variant Id", y = "Effect Size") +

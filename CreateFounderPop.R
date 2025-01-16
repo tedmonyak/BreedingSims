@@ -33,4 +33,4 @@ SP$setVarE(h2=c(n.h2, n.h2))
 
 if (addSnpChip) SP$addSnpChip(nSnpPerChr=n.markers)
 
-foundingPop <- newPop(founders, simParam = SP)
+founderPop <- newPop(founders, simParam = SP)

@@ -169,9 +169,9 @@ dev.off()
 
 Plot different trait architectures
 ```{r}
-methodType <- "Fitness"
+methodType <- "Additive"
 
-plotTraitArchitecture(foundingPop, methodType, twoTraitFitFunc)
+plotTraitArchitecture(founderPop, methodType, 2)
 
 save_dir <- file.path(output_dir, "TraitArchitecture")
 if (!dir.exists(save_dir)) dir.create(save_dir)
@@ -183,7 +183,7 @@ ggplot2::ggsave(filename = paste0("traitarchitecture_", methodType, ".pdf"),
                 path=save_dir,
                 device = "pdf")
 
-p <- plot3dPopulationFitness(foundingPop, calculateFitnessTwoTrait)
+p <- plot3dPopulationFitness(founderPop, calculateFitnessTwoTrait)
 
 fname <- file.path(save_dir, "3dpopulationfitness.html")
 htmlwidgets::saveWidget(as_widget(p), fname)
@@ -204,7 +204,7 @@ for (p in c(1:length(n.popSizes))) {
   n.popSize <- n.popSizes[p]
   print(n.popSize)
   source("CreateFounderPop.R")
-  pop <- foundingPop
+  pop <- founderPop
   for(gen in 1:n.gens) {
     fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
     fit_df$traitValA[gen] <- meanG(pop)[1]
@@ -260,7 +260,7 @@ fit_df <- data.frame(gen=1:n.gens,
                    traitValA=numeric(n.gens),
                    traitValB=numeric(n.gens))
 
-pop <- foundingPop
+pop <- founderPop
 
 for(gen in 1:n.gens) {
   fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
@@ -292,7 +292,7 @@ population w/standing genetic variation
 n.gens <- 200
 addSnpChip <- FALSE
 
-pop <- foundingPop
+pop <- founderPop
 df <- data.frame(gen=c(),
                  fitness=c(),
                  traitVal1=c(),
@@ -383,7 +383,7 @@ fit_df <- data.frame(gen=1:n.burnInGens,
                    traitValA=numeric(n.burnInGens),
                    traitValB=numeric(n.burnInGens))
 
-pop <- foundingPop
+pop <- founderPop
 
 # BURN-IN
 for (gen in 1:n.burnInGens) {
@@ -444,7 +444,6 @@ for (s in 1:n.sims) {
       if (hetLocus(prevLocus) && !hetLocus(newLocus)) {
         effSize <- getEffectSize(prevLocus,
                                  id,
-                                 twoTraitFitFunc,
                                  prevPop,
                                  "Fitness")
         if (effSize > 0) {
@@ -512,7 +511,7 @@ fit_df <- data.frame(gen=1:n.burnInGens,
                  fitness=numeric(n.burnInGens),
                  traitValA=numeric(n.burnInGens),
                  traitValB=numeric(n.burnInGens))
-pop <- foundingPop
+pop <- founderPop
 
 # BURN-IN
 for (gen in 1:n.burnInGens) {
@@ -637,7 +636,7 @@ repeat {
   if (s > n.sims*3) {
     break
   }
-  pop <- foundingPop
+  pop <- founderPop
 
   # BURN-IN
   for (gen in 1:n.burnInGens) {
@@ -824,12 +823,12 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 ```
 
 ```{r}
-n.popSize <- 200
+n.popSize <- 100
 n.qtlPerChr <- 5
 n.segSites <- 10
 n.markers <- 10
 source("CreateFounderPop.R")
-QtlGeno <- pullQtlGeno(foundingPop, trait=1)
+QtlGeno <- pullQtlGeno(founderPop, trait=1)
 QtlEff = as.data.frame(SP$traits[[1]]@addEff)
 
 ```

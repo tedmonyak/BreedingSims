@@ -1,4 +1,4 @@
-pop <- foundingPop
+pop <- founderPop
 if (n.nPops*n.subPopSize > nInd(pop)) {
   stop(paste0("Population of size ", nInd(pop), " not large enough to create ",
               n.nPops, " subpopulations of size ", n.subPopSize, "."))
