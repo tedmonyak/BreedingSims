@@ -292,13 +292,12 @@ This block runs n.nPops * n.sims Monte Carlo simulations of different population
 the change in the average effect size of alleles that are fixed along the adaptive walk,
 saving the order in which the alleles are fixed
 n.nPops populations are created, and each one undergoes n.sims unique adaptive walks
+
+Right now, we do not see a curve for the additive effect chart. A favored hypothesis:
+- Most of the alleles have a small effect size, so it is more likely that they would be fixed
 ```{r}
-n.popSize <- 500
-n.gens <- 100
 n.sims <- 20
 n.nPops <- 10
-n.selProp <- 0.95
-addSnpChip <- FALSE
 
 fig <- plot_ly()
 
@@ -325,6 +324,12 @@ for (p in 1:n.nPops) {
     # has been examined
     inc <- FALSE
     
+    # Burn-in
+    for (gen in 1:n.burnInGens) {
+      pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
+    }
+    
+    # Main simulation
     for (gen in 1:n.gens) {
       pop_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
       pop_df$traitValA[gen] <- meanP(pop)[1]
@@ -440,8 +445,9 @@ htmlwidgets::saveWidget(as_widget(p), fname)
 
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
 ```{r}
-source("GlobalVariables.R")
+source("Scripts/GlobalVariables.R")
 source("Scripts/CreateFounderPop.R")
+
 fit_df <- data.frame(gen=1:n.burnInGens,
                  fitness=numeric(n.burnInGens),
                  traitValA=numeric(n.burnInGens),
@@ -562,8 +568,11 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 fname <- file.path(save_dir, "traitarchitecture.pdf")
 pdf(fname)
 
-(plotTraitArchitecture(popA, "Fitness", twoTraitFitFunc) |
-    plotTraitArchitecture(popB, "Fitness",twoTraitFitFunc))
+p1 <- plotTraitArchitecture(popA, "Fitness")
+p2 <- plotTraitArchitecture(popB, "Fitness")
+p3 <- plotTraitArchitecture(popA, "Additive")
+p4 <- plotTraitArchitecture(popB, "Additive")
 
+(p1|p2)/(p3|p4)
 dev.off()
 ```

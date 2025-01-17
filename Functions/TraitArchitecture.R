@@ -110,9 +110,15 @@ getEffectSize <- function(locus,
 # Returns a dataframe with the following columns: 'id', and 'eff_size'
 traitArchitecture <- function(pop, methodType="Additive") {
   if (methodType == "Additive") {
-    eff_sizes <- getQtlEffectSizes(pop)
-    # Set ID as a column
-    eff_sizes <- rownames_to_column(eff_sizes, "id")
+    # Determine the heterozygous / segregating alleles
+    hetLoci <- as.data.frame(apply(getUniqueQtl(pop), MARGIN=2, FUN=hetLocus))
+    colnames(hetLoci) <- "het"
+    # Join the het table with the effect size table
+    eff_sizes <- merge(hetLoci, getQtlEffectSizes(pop),by="row.names")
+    colnames(eff_sizes)[1] <- "id"
+    # Filter out any non-segregating alleles
+    eff_sizes <- eff_sizes %>% filter(het)
+    eff_sizes <- eff_sizes[c(1,3)]
     return (eff_sizes)
   } else {
     # Get all QTL for all traits in a population
