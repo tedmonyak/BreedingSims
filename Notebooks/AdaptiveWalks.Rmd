@@ -297,7 +297,7 @@ Right now, we do see an upward curve for the additive effect chart. A favored hy
 - Most of the alleles have a small effect size, so it is more likely that they would be fixed
 ```{r}
 n.sims <- 20
-n.nPops <- 10
+n.popResets <- 10
 
 fig <- plot_ly()
 
@@ -306,8 +306,8 @@ eff_size_df <- data.frame(orderFixed=c(),
                           effectSizeA=c(),
                           effectSizeF=c())
 # Create a new population n.nPops times
-for (p in 1:n.nPops) {
-  print(paste0("Pop: ", p))
+for (p in 1:n.popResets) {
+  print(paste0("Pop Reset: ", p))
   source("Scripts/CreateFounderPop.R")
   for (s in 1:n.sims) {
     pop <- founderPop
