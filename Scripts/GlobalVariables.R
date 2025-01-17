@@ -27,7 +27,9 @@ n.gens <- 100 # maximum number of generations for an adaptive walk
 n.burnInGens <- 5 # number of burn-in generations for founder population
 n.nPops <- 2 # number of independent subpopulations to create
 
-n.sims <- 100 # number of monte carlo simulations to run
+# SIMULATIONS
+n.popResets <- 10 # number of times to reset the founder population in a simulation
+n.sims <- 100 # number of monte carlo simulations to run per set of parameters
 
 # Mapping populations
 n.RILFams <- 200 # number of RIL families to create
@@ -62,6 +64,7 @@ getParams <- function() {
     gens=n.gens,
     burnInGens=n.burnInGens,
     sims=n.sims,
+    popResets=n.popResets,
     RILFams=n.RILFams,
     indPerRILFam=n.indPerRILFam,
     nPops=n.nPops,
