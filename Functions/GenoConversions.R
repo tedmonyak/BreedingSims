@@ -102,7 +102,6 @@ getCross <- function(pop, parentA, parentB, popType="riself") {
   geno <- list()
   # Iterate through each chromosome
   for (c in chrs) {
-    c <- "1"
     # Get only the snps from chromosome 'c'
     snps <- snpGeno[,grepl(paste0(c,"_"), colnames(snpGeno))]
     # Remove the last row in the dataframe containing the genetic locations

@@ -23,7 +23,7 @@ n.shape <- 1 # Initial shape for the gamma distribution for each trait
 n.margin <- -0.1 # Populations will terminate their adaptive walks once they reach this fitness value
 n.burnInSelProp <- 0.95 # % of the population to advance during burn-in
 n.selProp <- 0.8 # % of the population to advance during main adaptive walk
-n.gens <- 50 # maximum number of generations for an adaptive walk
+n.gens <- 100 # maximum number of generations for an adaptive walk
 n.burnInGens <- 5 # number of burn-in generations for founder population
 n.nPops <- 2 # number of independent subpopulations to create
 

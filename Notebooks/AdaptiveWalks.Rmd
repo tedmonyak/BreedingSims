@@ -293,7 +293,7 @@ the change in the average effect size of alleles that are fixed along the adapti
 saving the order in which the alleles are fixed
 n.nPops populations are created, and each one undergoes n.sims unique adaptive walks
 
-Right now, we do not see a curve for the additive effect chart. A favored hypothesis:
+Right now, we do see an upward curve for the additive effect chart. A favored hypothesis:
 - Most of the alleles have a small effect size, so it is more likely that they would be fixed
 ```{r}
 n.sims <- 20

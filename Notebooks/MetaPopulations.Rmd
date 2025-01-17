@@ -48,26 +48,32 @@ if (!dir.exists(output_dir)) dir.create(output_dir)
 
 Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.
 ```{r}
+# Tidy dataframe to store the results
 result_df <- data.frame(sim=rep(1:n.sims, each=3),
                         traitVal1=numeric(n.sims*3),
                         traitVal2=numeric(n.sims*3),
                         pop=character(n.sims*3))
 
+# Run n.sims simulations
 s <-1
 repeat {
   print(paste0("Sim: ", (s+2)/3))
+  # Each value of s is used for 3 rows in the dataframe. Terminate once s*3 is reached
   if (s > n.sims*3) {
     break
   }
   pop <- founderPop
 
-  # BURN-IN
+  # Burn-in
   for (gen in 1:n.burnInGens) {
     pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
   }
-  popA <- selectInd(pop, use="rand", nInd=40)
-  popB <- selectInd(pop, use="rand", nInd=40)
 
+  # Randomly select two subpopulations
+  popA <- selectInd(pop, use="rand", nInd=n.subPopSize)
+  popB <- selectInd(pop, use="rand", nInd=n.subPopSize)
+
+  # Move the two subpopulations towards a fitness optimum
   for (gen in 1:n.gens) {
     if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
       popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*n.selProp, nCrosses=nInd(popA))
@@ -76,13 +82,17 @@ repeat {
       popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*n.selProp, nCrosses=nInd(popB))
     }
   }
-  
+
+  # Randomly select a parent from each subpopulation
   parentA <- popA[runif(1,1,nInd(popA))]
   parentB <- popB[runif(1,1,nInd(popB))]
+  
+  # Cross the parents to create a biparental RIL population with n.RILFams families
   F1 <- randCross2(parentA,
                    parentB,
                    nCrosses=1,
                    nProgeny=n.RILFams)
+
   F2 <- self(F1)
   F3 <- self(F2)
   F4 <- self(F3)
@@ -91,14 +101,20 @@ repeat {
   F7 <- self(F6)
   F8 <- self(F7)
   F9 <- self(F8)
+
+  # Create F10s with n.indPerRILFam replicates per family
   RIL <- self(F9, nProgeny=n.indPerRILFam)
+
+  # Update result dataframes with mean phenotype values from each population
   result_df$traitVal1[s] <- meanP(popA)[1]
   result_df$traitVal2[s] <- meanP(popA)[2]
   result_df$pop[s] <- "Elite Pop 1"
+  # Increment index
   s <- s+1
   result_df$traitVal1[s] <- meanP(popB)[1]
   result_df$traitVal2[s] <- meanP(popB)[2]
   result_df$pop[s] <- "Elite Pop 2"
+  # Increment index
   s <- s+1
   result_df$traitVal1[s] <- meanP(RIL)[1]
   result_df$traitVal2[s] <- meanP(RIL)[2]
@@ -106,6 +122,7 @@ repeat {
   s <- s+1
 }
 
+# Create plot for first trait value
 t1 <- ggplot(data=result_df, aes(x=traitVal1, fill=pop)) +
   geom_histogram(position='identity', binwidth = 0.05, alpha=0.6) +
   scale_fill_manual(name = "Population",
@@ -114,6 +131,7 @@ t1 <- ggplot(data=result_df, aes(x=traitVal1, fill=pop)) +
                                 "Elite Pop 2" = "lightpink")) +
   labs(title="Trait 1")
 
+# Create plot for second trait value
 t2 <- ggplot(data=result_df, aes(x=traitVal2, fill=pop)) +
   geom_histogram(position='identity', binwidth = 0.05, alpha=0.6) +
   scale_fill_manual(name = "Population",
@@ -121,6 +139,8 @@ t2 <- ggplot(data=result_df, aes(x=traitVal2, fill=pop)) +
                                "Elite Pop 1" = "lightblue",
                                "Elite Pop 2" = "lightpink")) +
   labs(title="Trait 2")
+
+g <- (t1|t2)
 
 save_dir <- file.path(output_dir, "EliteVSRIL")
 if (!dir.exists(save_dir)) dir.create(save_dir)
@@ -136,6 +156,7 @@ ggplot2::ggsave(filename = fname,
 1) Pull out individuals from each population and cross them
 2) Create RILs
 3) Do QTL Mapping
+
 ```{r}
 getSigQtl <- function(RIL, parentA, parentB) {
   cross <- getCross(RIL, parentA, parentB, "riself")
@@ -153,13 +174,7 @@ getSigQtl <- function(RIL, parentA, parentB) {
                        returnQTLModel=FALSE,
                        alpha=0.05,
                        controlAcrossCol=TRUE)
-  
-  actualQtl <- getEffectSizesAndLocations(RIL, trait=1)
-  a <- actualQtl %>%
-    filter(chr=='4')
-  ggplot(data=a, aes(x=pos, y=eff_size)) +
-    geom_bar(stat="identity")
-  print
+
   if (saveQtlPlots) {
     save_dir <- file.path(output_dir, "QtlMapping")
     if (!dir.exists(save_dir)) dir.create(save_dir)
@@ -175,7 +190,10 @@ getSigQtl <- function(RIL, parentA, parentB) {
     abline(h=summary(operm.hk[1,2]), col="red", lty = "dotted", lwd=2)
     dev.off()
     
-    geno = rbind(pullQtlGeno(RIL), pullQtlGeno(parentA), pullQtlGeno(parentB))
+
+    # PCA
+    # Merge the genotypes of the QTL
+    geno = rbind(pullSegSiteGeno(RIL), pullSegSiteGeno(parentA), pullSegSiteGeno(parentB))
     PCA  = dudi.pca(df = geno, center = T, scale = F, scannf = F, nf = 5)
     (VAF = 100 * PCA$eig[1:5] / sum(PCA$eig)) # variance explained
     df.PCA = data.frame(
@@ -196,6 +214,7 @@ getSigQtl <- function(RIL, parentA, parentB) {
   return (nrow(sigQtl))
 }
 
+source("Scripts/GlobalVariables.R")
 source("Scripts/CreateIndependentPops.R")
 popA <- pops[[1]]
 popB <- pops[[2]]
@@ -209,9 +228,22 @@ getSigQtl(RIL, parentA, parentB)
 saveQtlPlots <- FALSE
 ```
 
+```{r}
+cross <- getCross(RIL, parentA, parentB, "riself")
+cross <- drop.nullmarkers(cross)
+phes <- phenames(cross)[1:2]
+cross <- calc.genoprob(cross, step=n.step, error.prob=n.errorProb)
+out.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
+                  n.cluster=n.cores)
+operm.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
+                    n.perm=1000,n.cluster=n.cores)
+
+```
+
+
 QTL Monte Carlo Simulation
 ```{r}
-n.sims <- 10
+n.sims <- 100
 res.df <- data.frame(sim=rep(1:n.sims, times=2),
                      type=c(2*n.sims),
                      nSigQtl=c(2*n.sims))
@@ -223,9 +255,6 @@ for (s in 1:n.sims) {
   RIL <- res[-(1:2)]
   parentA <- res[1]
   parentB <- res[2]
-  #RIL <- res[1:(length(res)-2)]
-  #parentA <- res[length(res)-1]
-  #parentB <- res[length(res)]
   nQtl <- getSigQtl(RIL, parentA, parentB)
   res.df$type[s] <- "Trans-elite"
   res.df$nSigQtl[s] <- nQtl
@@ -234,15 +263,12 @@ for (s in 1:n.sims) {
   RIL <- res[-(1:2)]
   parentA <- res[1]
   parentB <- res[2]
-  #RIL <- res[1:(length(res)-2)]
-  #parentA <- res[length(res)-1]
-  #parentB <- res[length(res)]
   nQtl <- getSigQtl(RIL, parentA, parentB)
   res.df$type[s+n.sims] <- "Cis-elite"
   res.df$nSigQtl[s+n.sims] <- nQtl
 }
 
-ggplot(data=res.df, aes(x=nSigQtl, fill=type)) +
+g <- ggplot(data=res.df, aes(x=nSigQtl, fill=type)) +
   geom_histogram(position='identity', binwidth = 1, col='black', alpha=0.9) +
   scale_fill_manual(name = "Parental Cross Type",
                     values = c("Trans-elite" = "orange",
@@ -270,26 +296,51 @@ QtlEff = as.data.frame(SP$traits[[1]]@addEff)
 
 ```
 
-Create NAM and DP Populations
+Create NAM and DP Populations  for GWAS
 ```{r}
 n.nPops <- 11
 n.subPopSize <- 80
 source("Scripts/CreateIndependentPops.R")
+
 NAM <- createNAM()
 DP <- createDP()
+
+plotTraitArchitecture(NAM)
 ```
 
 
-GWAS
+Run GWAS for 2 traits
 ```{r}
-pop <- NAM
-
+pop <- DP
+ 
+# Get genotype in rrBLUP encoded format
 geno <- getGwasGeno(pop)
+
+# Get phenotype data
+# dataframe has 3 columns: id, pheno.Trait1, pheno.Trait2
 pheno = data.frame(id = 1:pop@nInd,
-                    pheno  = pop@pheno)
-trait <- 1
-model1 = GWAS(pheno[,c(1,trait+1)], geno, plot = T)
-model2 = GWAS(pheno[,c(1,trait+1)], geno, n.PC = 3, plot = T)
+                  pheno  = pop@pheno)
+
+# Run GWAS for 2 traits
+save_dir <- file.path(output_dir, "GWAS")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+fname <- file.path(save_dir, "gwas_trait1_NAM.pdf")
+pdf(fname)
+
+# select the 2nd column for trait 1
+model.1 <- GWAS(pheno[,c(1,2)], geno, plot = T, n.core=n.cores)
+dev.off()
+
+fname <- file.path(save_dir, "gwas_trait2_NAM.pdf")
+pdf(fname)
+# select the 3rd column for trait 2
+model.2 <- GWAS(pheno[,c(1,3)], geno, plot = T, n.core=n.cores)
+dev.off()
+
+
+model.pc = GWAS(pheno[,c(1,trait+1)], geno, n.PC = 3, plot = T)
 
 model1$Trait1 = 10 ^ (-model1$pheno.Trait1)
 model2$Trait1 = 10 ^ (-model2$pheno.Trait1)

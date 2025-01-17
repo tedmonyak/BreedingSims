@@ -10,11 +10,11 @@
 # and the rest is the RIL
 # Assumes that popA and popB exist already
 createRIL <- function(interPop=TRUE) {
-  aIdx <- runif(2,1,nInd(popA))
+  aIdx <- sample.int(nInd(popA),2)
   parentA <- popA[aIdx[1]]
   
   if (interPop) {
-    parentB <- popB[runif(1,1,nInd(popB))]
+    parentB <- popB[sample.int(nInd(popA),1)]
   } else {
     parentB <- popA[aIdx[2]]
   }
@@ -43,7 +43,7 @@ createRIL <- function(interPop=TRUE) {
   # Each RIL family has n.indPerRILFam replicates
   RIL <- self(F9, nProgeny=n.indPerRILFam)
   #BC1 <- randCross2(parentA, F1, nCrosses=200)
-  return (c(RIL, parentA, parentB))
+  return (c(parentA, parentB, RIL))
 }
 
 # Creates a nested association mapping (NAM) population, to be used for GWAS
@@ -52,21 +52,24 @@ createNAM <- function() {
   # The "reference" population is the first population
   refPop <- pops[[1]]
   # Randomly select an individual from the reference population
-  refLine <- refPop[runif(1,1,nInd(refPop))]
-
+  refLine <- refPop[sample.int(nInd(refPop),1)]
+  # Make the reference line inbred by selfing it for 10 generations
+  for (f in 1:10) {
+    refLine <- self(refLine)
+  }
   # The rest of the founder lines will come from the other populations in pops
   founderLines <- c()
   # Iterate through the rest of the populations and select a random individual
   # to become a founder line
   for (p in 2:n.nPops) {
     subPop <- pops[[p]]
-    ind <- subPop[runif(1,1,nInd(subPop))]
+    ind <- subPop[sample.int(nInd(subPop),1)]
     for (f in 1:10) {
       ind <- self(ind)
     }
     founderLines <- append(founderLines, ind)
   }
-
+  
   # Cross each of the founder lines by the reference line
   crossPlan = matrix(c(rep(1:10), rep(1,10)), nrow=10, ncol=2)
   
