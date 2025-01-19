@@ -12,7 +12,7 @@ hetLocus <- function(locus) {
 # Get the QTL of all traits in a population
 # Since QTL can be overlapping between traits, we must filter out the
 # duplicated QTL
-# Returns: a dataframe of the QTL
+# Returns: a dataframe of the QTL (where columns are the QTL and rows are the individuals)
 getUniqueQtl <- function(pop) {
   # Get the qtl from trait 1
   qtlGeno <- pullQtlGeno(pop,1)

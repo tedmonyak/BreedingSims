@@ -35,7 +35,7 @@ selectionRatio <- function(w) {
   # The initial selection ratio
   a <- 1-n.selProp
   # The "n" term in the geometric series increases as the the distance from the initial fitness increases
-  n <- initFit/w
+  n <- abs(initFit/w)
   # Return a geometrically increasing value (which increases with n)
   return (1-(a * n.r^(n-1)))
 }

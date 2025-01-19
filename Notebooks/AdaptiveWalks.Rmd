@@ -181,25 +181,62 @@ htmlwidgets::saveWidget(as_widget(ps), fname)
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 ```
 
+Plot the change in allele frequency over time
 ```{r}
-fit_df <- data.frame(gen=1:n.gens,
-                   fitness=numeric(n.gens),
-                   traitValA=numeric(n.gens),
-                   traitValB=numeric(n.gens))
-
+n.qtlPerChr <- 2
+source("Scripts/CreateFounderPop.R")
 pop <- founderPop
 
+# Can be set as either 2 or 0, this is the allele to track frequency of
+allele <- 2 
+
+# Results dataframe
+freq.df <- data.frame(gen=1:n.gens)
+
+# Get the effect sizes of each qtl
+qtlEff.df <- getQtlEffectSizes(pop)
+
+# Get the names of all the QTLs
+qtl <- rownames(qtlEff.df)
+
+# Create a dataframe of all zeros where the columns are the QTL ids, and the # rows is the # of generations
+qtl.df <- data.frame(matrix(0, ncol=length(qtl), nrow=n.gens))
+colnames(qtl.df) <- qtl
+
+# Combine the dataframes
+freq.df <- cbind(freq.df, qtl.df)
+
+# Iterate through each generation
 for(gen in 1:n.gens) {
-  fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
-  fit_df$traitValA[gen] <- meanG(pop)[1]
-  fit_df$traitValB[gen] <- meanG(pop)[2]
   meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
+  # Get the qtl genotype data
+  qtlGeno <- getUniqueQtl(pop)
+  # Get the frequency of the '2' allele at each locus
+  for (l in 1:length(qtl)) {
+    # id is the name of the qtl (chr_site)
+    id <- qtl[l]
+    # A list of genotype data for each individual in the population at that locus
+    locus <- qtlGeno[,l]
+    # Calculate the allele frequency as the frequency of homozygous individuals (for 'allele') +
+    # 1/2 * frequency of heterozygous individuals (assumes the locus is biallelic)
+    freq.df[gen,id] <- (sum(locus==allele)/n.popSize) + ((sum(locus==1)/n.popSize)/2)
+  }
+  # Determine selection ration based on fitness
   selRat <- selectionRatio(meanFitness)
+  #Advance individuals
   pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*selRat, nCrosses=n.popSize)
 }
 
-g <- ggplot(df)
+# Make the dataframe tidy
+freq.df<- melt(freq.df, id="gen", variable.name="QTL ID", value.name="Allele Frequency")
 
+# Add the qtl effect size data to the dataframe
+freq.df <- merge(freq.df, qtlEff.df, by.x="QTL ID", by.y="row.names", all.x=TRUE)
+
+# Create a line plot for the change in frequency of alleles over time
+# Each line's opacity is a function of its effect size (higher=darker)
+g <- ggplot(freq.df, aes(x=gen, y=freq, color=id, alpha=eff_size)) +
+  geom_line(size=0.7)
 
 save_dir <- file.path(output_dir, "AlleleFrequencies")
 if (!dir.exists(save_dir)) dir.create(save_dir)
@@ -209,7 +246,9 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 
 ggplot2::ggsave(filename = paste0("allelefrequencies.pdf"),
                 path=save_dir,
-                device = "pdf")
+                device = "pdf",
+                width=10,
+                height=7)
 ```
 
 Simulate an adaptive walk, and plot the following curve:
