@@ -29,6 +29,7 @@ library(reshape2)
 library(rrBLUP)
 library(snow)
 library(tibble)
+library(tidyr)
 library(viridis)
 install_github("jtlovell/qtlTools")
 rm(list = ls())
@@ -39,13 +40,13 @@ setwd("~/Documents/CSU/R/BreedingSims")
 source("Functions/Fitness.R")
 source("Functions/GenoConversions.R")
 source("Functions/MappingPopulations.R")
+source("Functions/QtlMapping.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalVariables.R")
 source("Scripts/CreateFounderPop.R")
 output_dir <- file.path(getwd(), "Output")
 if (!dir.exists(output_dir)) dir.create(output_dir)
 ```
-
 
 Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.
 ```{r}
@@ -160,78 +161,27 @@ ggplot2::ggsave(filename = fname,
 1) Pull out individuals from each population and cross them
 2) Create RILs
 3) Do QTL Mapping
-
 ```{r}
-getSigQtl <- function(RIL, parentA, parentB) {
-  cross <- getCross(RIL, parentA, parentB, "riself")
-  cross <- drop.nullmarkers(cross)
-  phes <- phenames(cross)[1:2]
-  cross <- calc.genoprob(cross, step=n.step, error.prob=n.errorProb)
-  out.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
-                    n.cluster=n.cores)
-  operm.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
-                      n.perm=1000,n.cluster=n.cores)
-  sigQtl <- pullSigQTL(cross,
-                       pheno.col=phes,
-                       s1.output=out.hk,
-                       perm.output=operm.hk,
-                       returnQTLModel=FALSE,
-                       alpha=0.05,
-                       controlAcrossCol=TRUE)
-
-  if (saveQtlPlots) {
-    save_dir <- file.path(output_dir, "QtlMapping")
-    if (!dir.exists(save_dir)) dir.create(save_dir)
-    save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
-    if (!dir.exists(save_dir)) dir.create(save_dir)
-    fname <- file.path(save_dir, "linkagemap.pdf")
-
-    pdf(fname)
-    cols <- c("blue", "red")
-    plot(out.hk, type="n", ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))), ylab= "LOD Score")
-    for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i])
-    abline(h=summary(operm.hk[1,1]), col="blue", lty = "dotted", lwd=2)
-    abline(h=summary(operm.hk[1,2]), col="red", lty = "dotted", lwd=2)
-    dev.off()
-    
-
-    # PCA
-    # Merge the genotypes of the QTL
-    geno = rbind(pullSegSiteGeno(RIL), pullSegSiteGeno(parentA), pullSegSiteGeno(parentB))
-    PCA  = dudi.pca(df = geno, center = T, scale = F, scannf = F, nf = 5)
-    (VAF = 100 * PCA$eig[1:5] / sum(PCA$eig)) # variance explained
-    df.PCA = data.frame(
-      "Pop" = c(rep("RIL", RIL@nInd), "Parent A", "Parent B"),
-      "PC1" = PCA$l1$RS1,
-      "PC2" = PCA$l1$RS2)
-    ggplot(df.PCA, aes(x = PC1, y = PC2)) +
-      geom_point(aes(colour = factor(Pop))) +
-      ggtitle("Population structure") +
-      xlab(paste("Pcomp1: ", round(VAF[1], 2), "%", sep = "")) +
-      ylab(paste("Pcomp2: ", round(VAF[2], 2), "%", sep = ""))
-    
-    fname <- file.path(save_dir, "PCA.pdf")
-    ggplot2::ggsave(filename = fname,
-                    device = "pdf")
-    write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
-  }
-  return (nrow(sigQtl))
-}
+save_dir <- file.path(output_dir, "QtlMapping")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+dir.create(save_dir)
 
 source("Scripts/GlobalVariables.R")
 source("Scripts/CreateIndependentPops.R")
-popA <- pops[[1]]
-popB <- pops[[2]]
-res <- createRIL(interPop=TRUE)
+
+# pops is created in CreateIndependentPops
+# Create a biparental RIL family
+res <- createRIL(pops[[1]], pops[[2]], save_dir)
+# Parents A and B are the first two individuals in the result population
 RIL <- res[-(1:2)]
 parentA <- res[1]
 parentB <- res[2]
 
-saveQtlPlots <- TRUE
-getSigQtl(RIL, parentA, parentB)
-saveQtlPlots <- FALSE
+getSigQtl(RIL, parentA, parentB, save_dir)
 ```
 
+Add effect sizes to LOD plots (work-in-progress)
 ```{r}
 cross <- getCross(RIL, parentA, parentB, "riself")
 cross <- drop.nullmarkers(cross)
@@ -244,38 +194,66 @@ operm.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
 
 ```
 
-
 QTL Monte Carlo Simulation
+This will run n.popResets * n.sims simulations, and for each simulation,
+create two subpopulations, then two biparental RIL populations:
+1 "inter" (parents come from different subpopulations),
+1 "intra" (parents come from the same sub population)
+For each RIL, calculate and store the number of signficant LOD peaks in the linkage map
 ```{r}
-n.sims <- 10
+# Number of founder populations to simulate
 n.popResets <- 10
+# Number of simulations per founder population
+n.sims <- 10
+# Result dataframe
 res.df <- data.frame(pop=c(),
                      sim=c(),
                      type=c(),
                      nSigQtl=c())
+
+sim_dir <- file.path(output_dir, "QtlMonteCarlo")
+if (!dir.exists(sim_dir)) dir.create(sim_dir)
+sim_dir <- file.path(sim_dir, format(Sys.time(), "%F_%H_%M_%S"))
+dir.create(sim_dir)
+
+# Reset the founder population n.popResets times
 for (r in 1:n.popResets) {
-  print(paste0("Pop Reset ", p))
+  pop_dir <- file.path(sim_dir, paste0("Founder Population ", r))
+  dir.create(pop_dir)
+  print(paste0("Pop Reset ", r))
   source("Scripts/CreateFounderPop.R")
+  # For each founder population, create independent populations n.sims times
   for (s in 1:n.sims) {
+    save_dir <- file.path(pop_dir, paste0("Run ", s))
+    dir.create(save_dir)
     print(paste0("Sim ", s))
     source("Scripts/CreateIndependentPops.R")
-    popA <- pops[[1]]
-    popB <- pops[[2]]
-    res <- createRIL(interPop=TRUE)
+    # Create a biparental RIL population by sampling one individual from each subpopulation
+    # TODO select top parent from each population?
+    res <- createRIL(pops[[1]], pops[[2]], save_dir)
+    # Select the parents from the result, and the RIL population
     RIL <- res[-(1:2)]
     parentA <- res[1]
     parentB <- res[2]
-    nQtl <- getSigQtl(RIL, parentA, parentB)
+    qtl_dir <- file.path(save_dir, "Inter")
+    dir.create(qtl_dir)
+    # Determine the number of significant QTL
+    nQtl <- getSigQtl(RIL, parentA, parentB, qtl_dir)
     
     res.df <- rbind(res.df, data.frame(pop=r,
                                        sim=s,
                                        type="Inter",
                                        nSigQtl=nQtl))
-    res <- createRIL(interPop=FALSE)
+    # Create a biparental RIL population by sampling two individuals from the same subpopulation
+    # By providing NA instead of a population, the createRIL function does an intra-population cross
+    res <- createRIL(pops[[1]], NA, save_dir)
     RIL <- res[-(1:2)]
     parentA <- res[1]
     parentB <- res[2]
-    nQtl <- getSigQtl(RIL, parentA, parentB)
+    qtl_dir <- file.path(save_dir, "Intra")
+    dir.create(qtl_dir)
+    nQtl <- getSigQtl(RIL, parentA, parentB, qtl_dir)
+    # Update the result dataframe
     res.df <- rbind(res.df, data.frame(pop=r,
                                        sim=s,
                                        type="Intra",
@@ -293,11 +271,7 @@ g <- ggplot(data=res.df, aes(x=type, y=nSigQtl, fill=type)) +
            x="# Significant QTL",
            y="Biparental Cross Type")
 
-save_dir <- file.path(output_dir, "AverageNumSignificantQtl")
-if (!dir.exists(save_dir)) dir.create(save_dir)
-save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
-if (!dir.exists(save_dir)) dir.create(save_dir)
-fname <- file.path(save_dir, "significantqtl.pdf")
+fname <- file.path(sim_dir, "significantqtl.pdf")
 ggplot2::ggsave(filename = fname,
                 device = "pdf")
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
@@ -313,18 +287,6 @@ agg.df <- res.df %>%
 
 ggplot(data=agg.df, aes(x=qtldiff)) +
   geom_bar(stat="bin", binwidth=0.5)
-```
-
-
-```{r}
-n.popSize <- 100
-n.qtlPerChr <- 5
-n.segSites <- 10
-n.markers <- 10
-source("Scripts/CreateFounderPop.R")
-QtlGeno <- pullQtlGeno(founderPop, trait=1)
-QtlEff = as.data.frame(SP$traits[[1]]@addEff)
-
 ```
 
 Create NAM and DP Populations  for GWAS

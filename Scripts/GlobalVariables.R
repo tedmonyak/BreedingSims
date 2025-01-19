@@ -4,7 +4,7 @@
 
 # POPULATION
 n.popSize = 1000 # Num. individuals in the founder population
-n.subPopSize = 200 # Num individuals in the independent sub-populations
+n.subPopSize = 100 # Num individuals in the independent sub-populations
 n.ne = n.popSize # Effective population size
 n.segSites = 1000 # Initial # segregating alleles per chromosome in the population
 n.markers = 1000 # Num. loci per chromosome to include on the SNP chip 
@@ -18,6 +18,7 @@ n.h2 <- 0.6 # Narrow-sense heritability for each trait
 n.initTraitVal <- 10
 n.var <- 1 # Initial variance for each trait. This is used as the 'rate' parameter in a gamma distribution
 n.shape <- 1 # Initial shape for the gamma distribution for each trait
+n.allele <- 2 # This is the allele for which to track frequency over time 
 
 # ADAPTIVE WALKS
 n.margin <- 0 # Populations will terminate their adaptive walks once they reach this fitness value
@@ -26,7 +27,7 @@ n.gens <- 100 # maximum number of generations for an adaptive walk
 n.burnInGens <- 5 # number of burn-in generations for founder population
 n.nPops <- 2 # number of independent subpopulations to create
 n.selProp <- 0.3 # % of the population to advance during main adaptive walk
-n.r <- 0.9 # the r value to use in the geometric series for a decaying selection intensity. Set to 1 for a non-decaying intensity, and decrease this to increase the rate of decay
+n.r <- 1 # 0.9 # the r value to use in the geometric series for a decaying selection intensity. Set to 1 for a non-decaying intensity, and decrease this to increase the rate of decay
 
 # SIMULATIONS
 n.popResets <- 10 # number of times to reset the founder population in a simulation
@@ -59,6 +60,7 @@ getParams <- function() {
     initTraitVal=n.initTraitVal,
     var=n.var,
     shape=n.shape,
+    allel=n.allele,
     margin=n.margin,
     burnInSelProp=n.burnInSelProp,
     selProp=n.selProp,

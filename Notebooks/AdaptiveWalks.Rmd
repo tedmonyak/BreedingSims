@@ -187,9 +187,6 @@ n.qtlPerChr <- 2
 source("Scripts/CreateFounderPop.R")
 pop <- founderPop
 
-# Can be set as either 2 or 0, this is the allele to track frequency of
-allele <- 2 
-
 # Results dataframe
 freq.df <- data.frame(gen=1:n.gens)
 
@@ -219,7 +216,7 @@ for(gen in 1:n.gens) {
     locus <- qtlGeno[,l]
     # Calculate the allele frequency as the frequency of homozygous individuals (for 'allele') +
     # 1/2 * frequency of heterozygous individuals (assumes the locus is biallelic)
-    freq.df[gen,id] <- (sum(locus==allele)/n.popSize) + ((sum(locus==1)/n.popSize)/2)
+    freq.df[gen,id] <- (sum(locus==n.allele)/n.popSize) + ((sum(locus==1)/n.popSize)/2)
   }
   # Determine selection ration based on fitness
   selRat <- selectionRatio(meanFitness)
@@ -297,6 +294,7 @@ for (gen in 1:n.gens) {
   loci <- colnames(segSiteGeno)
   nLoci <- ncol(segSiteGeno)
   # Iterate through all of the loci
+  # TODO: just calculate numHetQtl / numHetLoci
   for (l in 1:ncol(segSiteGeno)) {
     id <- loci[l]
     locus = segSiteGeno[,l]
@@ -410,7 +408,6 @@ for (p in 1:n.popResets) {
     
     # Main simulation
     for (gen in 1:n.gens) {
-      
       meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
       selRat <- selectionRatio(meanFitness)
       pop_df$fitness[gen] <- meanFitness
@@ -459,9 +456,9 @@ for (p in 1:n.popResets) {
         inc <- FALSE
       }
       # If the population is within n.margin, terminate the simulation
-      #if (mean(twoTraitFitFunc(gv(subPop))) >= n.margin) {
-        #break
-      #}
+      if (mean(twoTraitFitFunc(gv(subPop))) >= n.margin) {
+        break
+      }
       
     }
     # Add the adaptive walk of the sub-population
@@ -523,19 +520,11 @@ p <- fig %>%
                       aspectmode='cube')) %>% hide_colorbar()
 fname <- file.path(save_dir, "adaptivewalk.html")
 htmlwidgets::saveWidget(as_widget(p), fname)
-
-
-#plotTraitArchitecture(founderPop) # REMOVE
 ```
 
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
 ```{r}
 source("Scripts/GlobalVariables.R")
-n.qtlPerChr <- 5
-n.gens <- 100
-n.selProp <- 0.5
-n.margin <- 0
-addSnpChip <- FALSE
 source("Scripts/CreateFounderPop.R")
 plotTraitArchitecture(founderPop)
 plot3dPopulationFitness(founderPop, calculateFitnessTwoTrait)
@@ -556,16 +545,10 @@ for (gen in 1:n.burnInGens) {
 # Create a random vector of size n.pops, with a random order of sub-population ids
 randVec <- sample(rep(c(1:n.nPops), times=n.popSize/n.nPops))
 
-# This section will return 1s for all of the indices in randVec that match 'idx',
-# specifying which individuals to select. This ensures there are no overlaps
-selectSubPop <- function(x, idx) {
-  as.numeric(lapply(randVec, idx, FUN=setequal))
-}
-
 # Select all of the "1" indexed individuals
-popA <- selectInd(pop, trait=selectSubPop, selectTop=TRUE, nInd=n.subPopSize, idx=1)
+popA <- selectInd(pop, trait=selectSubPop, selectTop=TRUE, nInd=n.subPopSize, idx=1, randVec=randVec)
 # Select all of the "2" indexed individuals
-popB <- selectInd(pop, trait=selectSubPop, selectTop=TRUE, nInd=n.subPopSize, idx=2)
+popB <- selectInd(pop, trait=selectSubPop, selectTop=TRUE, nInd=n.subPopSize, idx=2, randVec=randVec)
 
 # Create dataframes for each subpopulation, initializing with current values
 popA_df <- data.frame(gen=c(1),
@@ -683,6 +666,7 @@ p4 <- plotTraitArchitecture(popB, "Additive", "popB")
 (p1|p2)/(p3|p4)
 dev.off()
 
+# Create a density plot of trait 1
 trait1.df <- as.data.frame(cbind(pheno(popA)[,1], pheno(popB)[,1]))
 colnames(trait1.df) <- c("popA", "popB")
 trait1.df <- trait1.df %>%
@@ -691,6 +675,7 @@ t1 <- ggplot(trait1.df, aes(pheno, fill=pop, color=pop)) +
   geom_density(alpha=0.1) +
   labs(title="Trait 1")
 
+# Create a density plot of trait 2
 trait2.df <- as.data.frame(cbind(pheno(popA)[,2], pheno(popB)[,2]))
 colnames(trait2.df) <- c("popA", "popB")
 trait2.df <- trait2.df %>%
