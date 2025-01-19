@@ -181,12 +181,12 @@ getPerTraitQtlEffectSizesAndLocations <- function(pop, trait) {
 # each allele on fitness
 # trait: the index of the trait under question
 # Returns: a ggplot
-plotTraitArchitecture <- function(pop, methodType="Additive") {
+plotTraitArchitecture <- function(pop, methodType="Additive", popName="") {
   eff_sizes <- traitArchitecture(pop, methodType)
   # Create a plot with the effect sizes ranked in descending order
   g <- ggplot(data=eff_sizes, aes(x=reorder(id, -eff_size), y=eff_size)) +
     geom_bar(stat="identity") +
-    labs(x = "Variant Id", y = "Effect Size", title=methodType) +
+    labs(x = "Variant Id", y = "Effect Size", title=paste0(methodType, "_", popName)) +
     theme +
     theme(axis.text.x = element_text(angle = 45,
                                      vjust = 0.5,

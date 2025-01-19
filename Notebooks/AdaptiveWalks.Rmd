@@ -22,6 +22,7 @@ library(purrr)
 library(reshape2)
 library(snow)
 library(tibble)
+library(tidyr)
 library(viridis)
 rm(list = ls())
 
@@ -103,7 +104,9 @@ for (p in c(1:length(n.popSizes))) {
     fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
     fit_df$traitValA[gen] <- meanG(pop)[1]
     fit_df$traitValB[gen] <- meanG(pop)[2]
-    pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*(n.selProp), nCrosses=n.popSize)
+    meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
+    selRat <- selectionRatio(meanFitness)
+    pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*selRat, nCrosses=n.popSize)
   }
   # Add a trace to represent this population's adaptive walk
   fig <- add_trace(
@@ -142,7 +145,6 @@ htmlwidgets::saveWidget(as_widget(fig), fname)
 ```
 
 Overlay an adaptive walk over a fitness landscape, and save 3D and 2D versions
-TODO: fix the 3D version
 ```{r}
 fig <- plot_ly()
 fit_df <- data.frame(gen=1:n.gens,
@@ -156,7 +158,9 @@ for(gen in 1:n.gens) {
   fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
   fit_df$traitValA[gen] <- meanG(pop)[1]
   fit_df$traitValB[gen] <- meanG(pop)[2]
-  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*n.selProp, nCrosses=n.popSize)
+  meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
+  selRat <- selectionRatio(meanFitness)
+  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*selRat, nCrosses=n.popSize)
 }
 
 save_dir <- file.path(output_dir, "OverlayAdaptiveWalk")
@@ -175,6 +179,37 @@ fname <- file.path(save_dir, paste0("adaptivewalk_", plotType, ".html"))
 htmlwidgets::saveWidget(as_widget(ps), fname)
 
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+```
+
+```{r}
+fit_df <- data.frame(gen=1:n.gens,
+                   fitness=numeric(n.gens),
+                   traitValA=numeric(n.gens),
+                   traitValB=numeric(n.gens))
+
+pop <- founderPop
+
+for(gen in 1:n.gens) {
+  fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
+  fit_df$traitValA[gen] <- meanG(pop)[1]
+  fit_df$traitValB[gen] <- meanG(pop)[2]
+  meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
+  selRat <- selectionRatio(meanFitness)
+  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*selRat, nCrosses=n.popSize)
+}
+
+g <- ggplot(df)
+
+
+save_dir <- file.path(output_dir, "AlleleFrequencies")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+if (!dir.exists(save_dir)) dir.create(save_dir)
+write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+ggplot2::ggsave(filename = paste0("allelefrequencies.pdf"),
+                path=save_dir,
+                device = "pdf")
 ```
 
 Simulate an adaptive walk, and plot the following curve:
@@ -259,8 +294,10 @@ for (gen in 1:n.gens) {
   if (mean(twoTraitFitFunc(gv(pop))) >= n.margin) {
     break
   }
+  meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
+  selRat <- selectionRatio(meanFitness)
   # Advance the top progeny according to the fitness function
-  pop <- selectCross(pop=pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.selProp, nCrosses=nInd(pop))
+  pop <- selectCross(pop=pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
 }
 
 save_dir <- file.path(output_dir, "BeneficialAlleles")
@@ -296,8 +333,11 @@ n.nPops populations are created, and each one undergoes n.sims unique adaptive w
 Right now, we do see an upward curve for the additive effect chart. A favored hypothesis:
 - Most of the alleles have a small effect size, so it is more likely that they would be fixed
 ```{r}
-n.sims <- 20
+n.sims <- 10
 n.popResets <- 10
+n.selProp <- 0.3
+n.qtlPerChr <- 5
+addSnpChip <- FALSE
 
 fig <- plot_ly()
 
@@ -331,13 +371,16 @@ for (p in 1:n.popResets) {
     
     # Main simulation
     for (gen in 1:n.gens) {
-      pop_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(pop)))
+      
+      meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
+      selRat <- selectionRatio(meanFitness)
+      pop_df$fitness[gen] <- meanFitness
       pop_df$traitValA[gen] <- meanP(pop)[1]
       pop_df$traitValB[gen] <- meanP(pop)[2]
       # Keep track of the current population
       prevPop <- pop
       # Advance the population based on fitness
-      pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.selProp, nCrosses=nInd(pop))
+      pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
       # Get the qtl genotypes from the current and new populations, so we can compare them
       prevGeno <- getUniqueQtl(prevPop)
       newGeno <- getUniqueQtl(pop)
@@ -357,6 +400,7 @@ for (p in 1:n.popResets) {
                                    id,
                                    prevPop,
                                    "Additive")
+          #print(paste0("Gen: ", gen, ", Order: ", idx, ", Loc: ", id, ": ", effSizeA)) # REMOVE
           # Determine the effect size based on fitness
           effSizeF <- getEffectSize(prevLocus,
                                     id,
@@ -441,13 +485,21 @@ p <- fig %>%
 fname <- file.path(save_dir, "adaptivewalk.html")
 htmlwidgets::saveWidget(as_widget(p), fname)
 
+
+#plotTraitArchitecture(founderPop) # REMOVE
 ```
 
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
 ```{r}
 source("Scripts/GlobalVariables.R")
+n.qtlPerChr <- 5
+n.gens <- 100
+n.selProp <- 0.5
+n.margin <- 0
+addSnpChip <- FALSE
 source("Scripts/CreateFounderPop.R")
-
+plotTraitArchitecture(founderPop)
+plot3dPopulationFitness(founderPop, calculateFitnessTwoTrait)
 fit_df <- data.frame(gen=1:n.burnInGens,
                  fitness=numeric(n.burnInGens),
                  traitValA=numeric(n.burnInGens),
@@ -462,9 +514,19 @@ for (gen in 1:n.burnInGens) {
   pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
 }
 
-# Create 2 sub populations by randomly selecting individuals
-popA <- selectInd(pop, use="rand", nInd=n.subPopSize)
-popB <- selectInd(pop, use="rand", nInd=n.subPopSize)
+# Create a random vector of size n.pops, with a random order of sub-population ids
+randVec <- sample(rep(c(1:n.nPops), times=n.popSize/n.nPops))
+
+# This section will return 1s for all of the indices in randVec that match 'idx',
+# specifying which individuals to select. This ensures there are no overlaps
+selectSubPop <- function(x, idx) {
+  as.numeric(lapply(randVec, idx, FUN=setequal))
+}
+
+# Select all of the "1" indexed individuals
+popA <- selectInd(pop, trait=selectSubPop, selectTop=TRUE, nInd=n.subPopSize, idx=1)
+# Select all of the "2" indexed individuals
+popB <- selectInd(pop, trait=selectSubPop, selectTop=TRUE, nInd=n.subPopSize, idx=2)
 
 # Create dataframes for each subpopulation, initializing with current values
 popA_df <- data.frame(gen=c(1),
@@ -481,10 +543,13 @@ for (gen in 1:n.gens) {
   # If popA is within the margin of the fitness optimum, don't progress it any further
   if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
     # Advance the population
-    popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*n.selProp, nCrosses=nInd(popA))
+    meanFitness <- mean(twoTraitFitFunc(pheno(popA)))
+    # Get a selection ratio based on fitness
+    selRat <- selectionRatio(meanFitness)
+    popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*selRat, nCrosses=nInd(popA))
     # Update the dataframe with new values
     popA_df <- rbind(popA_df, data.frame(gen=gen,
-                                       fitness= mean(twoTraitFitFunc(pheno(popA))),
+                                       fitness=meanFitness,
                                        traitValA=meanP(popA)[1],
                                        traitValB=meanP(popA)[2]))
     
@@ -492,10 +557,13 @@ for (gen in 1:n.gens) {
   # If popB is within the margin of the fitness optimum, don't progress it any further
   if (mean(twoTraitFitFunc(pheno(popB))) < n.margin) {
     # If popA is within the margin of the fitness optimum, don't progress it any further
-    popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*n.selProp, nCrosses=nInd(popB))
+    meanFitness <- mean(twoTraitFitFunc(pheno(popB)))
+    # Get a selection ratio based on fitnes
+    selRat <- selectionRatio(meanFitness)
+    popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*selRat, nCrosses=nInd(popB))
     # Update the dataframe with new values
     popB_df <- rbind(popB_df, data.frame(gen=gen,
-                                       fitness= mean(twoTraitFitFunc(pheno(popB))),
+                                       fitness=meanFitness,
                                        traitValA=meanP(popB)[1],
                                        traitValB=meanP(popB)[2]))
   }
@@ -568,11 +636,33 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 fname <- file.path(save_dir, "traitarchitecture.pdf")
 pdf(fname)
 
-p1 <- plotTraitArchitecture(popA, "Fitness")
-p2 <- plotTraitArchitecture(popB, "Fitness")
-p3 <- plotTraitArchitecture(popA, "Additive")
-p4 <- plotTraitArchitecture(popB, "Additive")
+p1 <- plotTraitArchitecture(popA, "Fitness", "popA")
+p2 <- plotTraitArchitecture(popB, "Fitness", "popB")
+p3 <- plotTraitArchitecture(popA, "Additive", "popA")
+p4 <- plotTraitArchitecture(popB, "Additive", "popB")
 
 (p1|p2)/(p3|p4)
 dev.off()
+
+trait1.df <- as.data.frame(cbind(pheno(popA)[,1], pheno(popB)[,1]))
+colnames(trait1.df) <- c("popA", "popB")
+trait1.df <- trait1.df %>%
+  pivot_longer(c("popA", "popB"), names_to="pop", values_to="pheno")
+t1 <- ggplot(trait1.df, aes(pheno, fill=pop, color=pop)) +
+  geom_density(alpha=0.1) +
+  labs(title="Trait 1")
+
+trait2.df <- as.data.frame(cbind(pheno(popA)[,2], pheno(popB)[,2]))
+colnames(trait2.df) <- c("popA", "popB")
+trait2.df <- trait2.df %>%
+  pivot_longer(c("popA", "popB"), names_to="pop", values_to="pheno")
+t2 <- ggplot(trait2.df, aes(pheno, fill=pop, color=pop)) +
+  geom_density(alpha=0.1) +
+  labs(title="Trait 2")
+
+
+(t1|t2)
+ggplot2::ggsave(filename = "trait_distributions.pdf",
+                path=save_dir,
+                device = "pdf")
 ```

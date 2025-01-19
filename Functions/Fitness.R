@@ -24,6 +24,31 @@ calculateFitnessTwoTrait <- function(x,y) {
   return (res)
 }
 
+# Calculate a decaying selection ratio based on the distance from the fitness optimum
+# Uses a geometric series to determine the result, where a=(1-n.selProp),
+# r is set as an initial parameter (n.r), and n is a function of the distance from the initial fitness
+# w: the current fitness
+# Returns: a ratio between 0 and 1 which determines what percentage of individuals to advance
+selectionRatio <- function(w) {
+  # Based on the simulation parameters, this is the starting fitness value
+  initFit <- calculateFitnessTwoTrait(n.initTraitVal,n.initTraitVal)
+  # The initial selection ratio
+  a <- 1-n.selProp
+  # The "n" term in the geometric series increases as the the distance from the initial fitness increases
+  n <- initFit/w
+  # Return a geometrically increasing value (which increases with n)
+  return (1-(a * n.r^(n-1)))
+}
+
+# This section will return 1s for all of the indices in randVec that match 'idx',
+# specifying which individuals to select. This ensures there are no overlaps.
+# idx: The index of the subpopulation being selected
+# randVec: should be created previously with this line: sample(rep(c(1:n.nPops), times=n.popSize/n.nPops))
+# Returns: a vector of size randVec where all the values matching idx are 1, and all others are 0
+selectSubPop <- function(x, idx, randVec) {
+  as.numeric(lapply(randVec, idx, FUN=setequal))
+}
+
 # Set theme elements
 theme <- theme(plot.background = ggplot2::element_blank(),
                panel.background = ggplot2::element_blank(),
@@ -46,6 +71,7 @@ theme <- theme(plot.background = ggplot2::element_blank(),
 # type: one of 'CONTOUR' (for a 2D landscape) or 'SURFACE' (for a 3D landscape)
 # fit calc: the function for determining fitness based on two trait values
 # Also, supply the min and max trait values for the fitness landscape
+# TODO: add a fixed value to df, because phenotypic data is 'under' the fitness curve
 overlayWalkOnLandscape <- function(df,
                                    type="CONTOUR",
                                    fitCalc,
