@@ -5,18 +5,20 @@
 
 # Creates a biparental recombinant inbred line (RIL) population with n.RILFams families
 # popA: the first population to sample an individual from
-# popB: the second population to sample an individual from. If left as NA, select two
-# individuals from popA
+# popB: the second population to sample an individual from.
+# save_dir: directory to write plots t
+# inter: if TRUE, will cross an individual from popA and popB.
+# if FALSE, will cross two individuals from popA
 # Returns: a population where the first two individuals are parentA and parentB,
 # and the rest is the RIL
-createRIL <- function(popA, popB, save_dir) {
+createRIL <- function(popA, popB, save_dir, inter=TRUE) {
   # Select 2 random individuals from popA
   aIdx <- sample.int(nInd(popA),2)
   # parentA always comes from popA
   parentA <- popA[aIdx[1]]
   
   # 
-  if (!is.na(popB)) {
+  if (inter) {
     # if it is an inter-population cross, select an individual from popB
     parentB <- popB[sample.int(nInd(popB),1)]
   } else {
@@ -48,7 +50,7 @@ createRIL <- function(popA, popB, save_dir) {
   # Each RIL family has n.indPerRILFam replicates
   RIL <- self(F9, nProgeny=n.indPerRILFam)
   
-  if (!is.na(popB)) {
+  if (inter) {
     trait1.df <- as.data.frame(cbind(pheno(popA)[,1], pheno(popB)[,1], pheno(RIL)[,1]))
     colnames(trait1.df) <- c("popA", "popB", "RIL")
     trait1.df <- trait1.df %>%

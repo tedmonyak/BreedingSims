@@ -35,8 +35,10 @@ getABHGeno <- function(RIL, parentA, parentB, genoEnc=c(NA,1,2,3)) {
   # Get the marker genotype for the RIL family
   rilSnps <- pullSnpGeno(RIL)
 
-  # Create the output dataframe, which will be completely overwritten
-  output <- rilSnps
+  # Create the output dataframe
+  output <- matrix(0, nrow=nrow(rilSnps), ncol=ncol(rilSnps))
+  rownames(output) <- rownames(rilSnps)
+  colnames(output) <- colnames(rilSnps)
   # Iterate through all snps
   for (m in 1:ncol(rilSnps)) {
     # If the snp is monomorphic in the parents, set it as 'missing'
@@ -78,8 +80,7 @@ getABHGeno <- function(RIL, parentA, parentB, genoEnc=c(NA,1,2,3)) {
 getCross <- function(pop, parentA, parentB, popType="riself") {
   # Get the genetic distance map from AlphaSim
   genMap <- as.data.frame(unlist(SP$genMap))
-  # Remove the chromosome prefix from the rownames, leaving them in the format
-  # chr_loc
+  # Remove the chromosome prefix from the rownames, leaving them in the format chr_loc
   rownames(genMap) <- sub(".*\\.", "", rownames(genMap))
   colnames(genMap) <- "pos"
 
@@ -88,14 +89,22 @@ getCross <- function(pop, parentA, parentB, popType="riself") {
 
   # Join the genotype data with the genetic distance map
   snpGeno <- merge(snpGeno, genMap, by="row.names")
+  
+  # Add chromosome and site number to order by physical location
+  snpGeno <- snpGeno %>%
+    mutate(chr = strtoi(sub("_.*", "", Row.names))) %>%
+    mutate(site = strtoi(sub(".*_", "", Row.names))) %>%
+    arrange(chr, site) %>%
+    select(-one_of(c("chr", "site")))
   rownames(snpGeno) <- snpGeno$Row.names
+  
   # Remove the first column of the dataframe (which is a duplicate of the row names)
   snpGeno <- snpGeno[c(-1)]
   # Transpose, to get the columns as the snps, and the rows as the individuals
   snpGeno <- as.data.frame(t(snpGeno))
 
   # Change this if using a different number of chromosomes
-  chrs <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
+  chrs <- as.character(c(1:10))
 
   # Pull the phenotype data from AlphaSim
   pheno <- data.frame(pheno=pop@pheno)
@@ -111,7 +120,6 @@ getCross <- function(pop, parentA, parentB, popType="riself") {
     # Since the genetic locations are stored in morgans, convert them to
     # cM, as expected by rqtl
     chr_snps <- sapply(chr_snps, function(x) as.numeric(x)*100)
-    
     geno[[c]] <- list()
     # A is an autosome
     attributes(geno[[c]])$class<-"A"

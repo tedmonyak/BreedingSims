@@ -172,19 +172,22 @@ source("Scripts/CreateIndependentPops.R")
 
 # pops is created in CreateIndependentPops
 # Create a biparental RIL family
-res <- createRIL(pops[[1]], pops[[2]], save_dir)
+res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=save_dir, inter=TRUE)
 # Parents A and B are the first two individuals in the result population
 RIL <- res[-(1:2)]
 parentA <- res[1]
 parentB <- res[2]
 
-getSigQtl(RIL, parentA, parentB, save_dir)
+print(getSigQtl(RIL, parentA, parentB, save_dir))
 ```
 
 Add effect sizes to LOD plots (work-in-progress)
 ```{r}
 cross <- getCross(RIL, parentA, parentB, "riself")
 cross <- drop.nullmarkers(cross)
+plot(cross)
+
+plot.map(pull.map(cross),est.map(cross))
 phes <- phenames(cross)[1:2]
 cross <- calc.genoprob(cross, step=n.step, error.prob=n.errorProb)
 out.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
@@ -201,6 +204,13 @@ create two subpopulations, then two biparental RIL populations:
 1 "intra" (parents come from the same sub population)
 For each RIL, calculate and store the number of signficant LOD peaks in the linkage map
 ```{r}
+n.gens <- 100
+n.selProp < 0.2
+n.subPopSize <- 200
+n.margin <- -5
+n.markers <- 500
+n.initTraitValue <- 10
+n.var <- 0.1
 # Number of founder populations to simulate
 n.popResets <- 10
 # Number of simulations per founder population
@@ -230,7 +240,7 @@ for (r in 1:n.popResets) {
     source("Scripts/CreateIndependentPops.R")
     # Create a biparental RIL population by sampling one individual from each subpopulation
     # TODO select top parent from each population?
-    res <- createRIL(pops[[1]], pops[[2]], save_dir)
+    res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=save_dir, inter=TRUE)
     # Select the parents from the result, and the RIL population
     RIL <- res[-(1:2)]
     parentA <- res[1]
@@ -246,7 +256,7 @@ for (r in 1:n.popResets) {
                                        nSigQtl=nQtl))
     # Create a biparental RIL population by sampling two individuals from the same subpopulation
     # By providing NA instead of a population, the createRIL function does an intra-population cross
-    res <- createRIL(pops[[1]], NA, save_dir)
+    res <- createRIL(popA=pops[[1]], save_dir=save_dir, inter=FALSE)
     RIL <- res[-(1:2)]
     parentA <- res[1]
     parentB <- res[2]
@@ -266,7 +276,7 @@ g <- ggplot(data=res.df, aes(x=type, y=nSigQtl, fill=type)) +
       scale_fill_manual(name = "Parental Cross Type",
                         values = c("Inter" = "orange",
                                    "Intra" = "darkgreen"),
-                        labels = c("Intra-population", "Inter-population")) +
+                        labels = c("Inter-population", "Intra-population")) +
       labs(title="# of Significant QTL from RIL Populations",
            x="# Significant QTL",
            y="Biparental Cross Type")
@@ -274,19 +284,18 @@ g <- ggplot(data=res.df, aes(x=type, y=nSigQtl, fill=type)) +
 fname <- file.path(sim_dir, "significantqtl.pdf")
 ggplot2::ggsave(filename = fname,
                 device = "pdf")
-write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+write.table(res.df, file.path(sim_dir, "result_dataframe.csv"), col.names=TRUE, quote=FALSE, sep=",")
+write.table(getParams(), file.path(sim_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 ```
 
 Figure out difference (inter-intra) in mean qtl per population
 ```{r}
-agg.df <- res.df %>%
+res.df %>%
   group_by(pop, type) %>%
   summarize(meanQtlSize=mean(nSigQtl), .groups='drop') %>%
   group_by(pop) %>%
-  summarize(qtldiff=-diff(meanQtlSize))
-
-ggplot(data=agg.df, aes(x=qtldiff)) +
-  geom_bar(stat="bin", binwidth=0.5)
+  summarize(qtldiff=-diff(meanQtlSize)) %>%
+  ggplot(aes(x=qtldiff)) + geom_bar(stat="bin", binwidth=0.5)
 ```
 
 Create NAM and DP Populations  for GWAS
@@ -356,9 +365,9 @@ qq(model2$Trait1, main = "Marker + principal components")
 
 QTL stuff not being used
 ```{r}
-#plot(cross)
-#nmar(cross)
-#plot.map(pull.map(cross),est.map(cross))
+plot(cross)
+nmar(cross)
+plot.map(pull.map(cross),est.map(cross))
 #summary(operm.hk, alpha=0.05, pvalues=TRUE)
 
 
