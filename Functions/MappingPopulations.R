@@ -80,9 +80,10 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
                     device = "pdf",
                     width=20,
                     height=7)
+    fname <- file.path(save_dir, "3DFitness.html")
+    htmlwidgets::saveWidget(as_widget(plot3dPopulationFitnessTwoPops(popA, popB)), fname)
   }
   
-
   plotTraitArchitecture(RIL, "Additive", "RIL")
   ggplot2::ggsave(filename = "RIL_traitarchitecture.pdf",
                   path=save_dir,

@@ -147,24 +147,19 @@ overlayWalkOnLandscape <- function(df,
 # Plot a population on a a 3D fitness surface (only works for populations with 2 traits)
 # pop: The population to plot
 # fitCalc: The function for calculating fitness based on two traits
-# TODO: figure out how to add colorbar label
-plot3dPopulationFitness <- function(pop, fitCalc) {
-  popSize <- nInd(pop)
-  df <- data.frame(traitA=numeric(popSize),
-                   traitB=numeric(popSize),
-                   fitness=numeric(popSize))
+plot3dPopulationFitness <- function(pop, fitCalc=calculateFitnessTwoTrait) {
+  df <- data.frame(traitA=pheno(pop)[,1],
+                   traitB=pheno(pop)[,2],
+                   fitness=numeric(nInd(pop)))
   # Calculate the fitness for each individual in the population
-  for (i in 1:popSize) {
-    df$traitA[i] <- gv(pop)[i,1]
-    df$traitB[i] <- gv(pop)[i,2]
-    df$fitness[i] <- fitCalc(df$traitA[i], df$traitB[i])
-  }
+  df <- df %>% mutate(fitness=fitCalc(traitA, traitB))
   fig <- plot_ly()
   fig <- plot_ly() %>%
     layout(scene = list(xaxis = list(title = "Trait 1"),
                         yaxis = list(title = "Trait 2"),
                         zaxis = list(title = "Fitness"),
-                        aspectmode='cube')) %>%
+                        aspectmode='cube'),
+           annotations=list(text="Fitness", showarrow=FALSE, x=1.18, y=1.03)) %>%
     add_trace(
       fig,
       df,
@@ -175,6 +170,42 @@ plot3dPopulationFitness <- function(pop, fitCalc) {
       type = 'scatter3d',
       mode = 'markers',
       color=df$fitness)
+  return (fig)
+}
+
+# Plot 2 populations on a 3D fitness surface (only works for populations with 2 traits)
+# pop: The population to plot
+# fitCalc: The function for calculating fitness based on two traits
+plot3dPopulationFitnessTwoPops <- function(popA, popB, fitCalc=calculateFitnessTwoTrait) {
+  df.a <- data.frame(traitA=pheno(popA)[,1],
+                     traitB=pheno(popA)[,2],
+                     fitness=numeric(nInd(popA)),
+                     pop=rep("popA", times=nInd(popA)))
+  df.b <- data.frame(traitA=pheno(popB)[,1],
+                     traitB=pheno(popB)[,2],
+                     fitness=numeric(nInd(popB)),
+                     pop=rep("popB", times=nInd(popB)))
+  df <- rbind(df.a, df.b)
+  # Calculate the fitness for each individual in the population
+  df <- df %>% mutate(fitness=fitCalc(traitA, traitB))
+  fig <- plot_ly()
+  fig <- plot_ly() %>%
+    layout(scene = list(xaxis = list(title = "Trait 1"),
+                        yaxis = list(title = "Trait 2"),
+                        zaxis = list(title = "Fitness"),
+                        aspectmode='cube')) %>%
+    add_trace(
+      df,
+      name = df$pop,
+      x = df$traitA,
+      y = df$traitB,
+      z = df$fitness,
+      type = 'scatter3d',
+      mode = 'markers',
+      opacity=0.9,
+      color=df$pop,
+      colors=c("firebrick3", "dodgerblue1"))
+  fig
   return (fig)
 }
 
