@@ -32,6 +32,12 @@ for (p in 1:n.nPops) {
 # Each population follows an adaptive walk for a maximum of n.gens generations
 # Each will terminate once it is within n.margin of the fitness optimum
 for (p in 1:length(pops)) {
+  # idx is the order in which an allele is fixed along an adaptive walk
+  idx <- 1
+  # whether or not to increment the idx counter. Multiple alleles may be fixed
+  # in the same generation, so this cannot be incremented until each locus
+  # has been examined
+  inc <- FALSE
   subpop_dir <- file.path(save_dir, paste0("Subpop_", p))
   if (!dir.exists(subpop_dir)) dir.create(subpop_dir)
   fig <- plot_ly()
@@ -48,21 +54,12 @@ for (p in 1:length(pops)) {
   colnames(fit.df) <- c("gen", "fitness", "traitValA", "traitValB", qtl)
   
   for (gen in 1:n.gens) {
-    # Get the qtl genotype data
-    qtlGeno <- getUniqueQtl(pop)
-    alleleFreq <- data.frame(matrix(0, nrow=1, ncol=length(qtl)))
-    colnames(alleleFreq) <- qtl
-    # Get the frequency of the '2' allele at each locus
-    for (l in 1:length(qtl)) {
-      # id is the name of the qtl (chr_site)
-      id <- qtl[l]
-      # A list of genotype data for each individual in the population at that locus
-      locus <- qtlGeno[,l]
-      # Calculate the allele frequency as the frequency of homozygous individuals (for 'allele') +
-      # 1/2 * frequency of heterozygous individuals (assumes the locus is biallelic)
-      alleleFreq[1,id] <- (sum(locus==n.allele)/n.popSize) + ((sum(locus==1)/n.popSize)/2)
-    }
     if (mean(twoTraitFitFunc(pheno(pop))) < n.margin) {
+      # Get the qtl genotype data
+      qtlGeno <- getUniqueQtl(pop)
+      alleleFreq <- data.frame(matrix(0, nrow=1, ncol=length(qtl)))
+      colnames(alleleFreq) <- qtl
+
       # At each stage, select the top individuals according to how close each 
       # is from the fitness optimum
       meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
@@ -72,10 +69,37 @@ for (p in 1:length(pops)) {
                            fitness=meanFitness,
                            traitValA=meanP(pop)[1],
                            traitValB=meanP(pop)[2])
+      pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
+      newGeno <- getUniqueQtl(pop)
+      # Get the frequency of the '2' allele at each locus
+      for (l in 1:length(qtl)) {
+        # id is the name of the qtl (chr_site)
+        id <- qtl[l]
+        # A list of genotype data for each individual in the population at that locus
+        locus <- qtlGeno[,l]
+        # Calculate the allele frequency as the frequency of homozygous individuals (for 'allele') +
+        # 1/2 * frequency of heterozygous individuals (assumes the locus is biallelic)
+        alleleFreq[1,id] <- (sum(locus==n.allele)/n.popSize) + ((sum(locus==1)/n.popSize)/2)
+        
+        newLocus <- newGeno[,l]
+        if (hetLocus(locus) && !hetLocus(newLocus)) {
+          # Increment the order counter after this generation
+          inc <- TRUE
+          # Update the result dataframe
+          new_row <- data.frame(orderFixed=c(idx),
+                                effectSize=c(qtlEff.df[id,1]))
+          eff_size.df <- rbind(eff_size.df, new_row)
+        }
+      }
       # Join the new row with the newly calculated allele frequencies
       newRow <- cbind(newRow, alleleFreq)
       fit.df <- rbind(fit.df, newRow)
-      pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
+
+      # Check whether to increment the order counter and reset 'inc'
+      if (inc) {
+        idx <- idx + 1
+        inc <- FALSE
+      }
     }
   }
   # Update the population in the list

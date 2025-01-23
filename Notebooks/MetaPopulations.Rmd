@@ -213,7 +213,9 @@ n.sims <- 5
 
 n.selProp <- 0.3
 n.r < 0.8
-n.gens <- 200
+n.gens <- 100
+n.qtlPerChr <- 20
+n.subPopSize <- 500
 
 # Result dataframe
 res.df <- data.frame(pop=c(),
@@ -221,6 +223,10 @@ res.df <- data.frame(pop=c(),
                      sim=c(),
                      type=c(),
                      nSigQtl=c())
+
+# Tidy dataframe to store the order in which each allele is fixed, and the effect size
+eff_size.df <- data.frame(orderFixed=c(),
+                          effectSize=c())
 
 base_dir <- file.path(output_dir, "QtlMonteCarlo")
 if (!dir.exists(base_dir)) dir.create(base_dir)
@@ -289,11 +295,24 @@ g <- ggplot(data=res.df, aes(x=type, y=nSigQtl, fill=type)) +
            x="# Significant QTL",
            y="Biparental Cross Type")
 
-fname <- file.path(sim_dir, "significantqtl.pdf")
+fname <- file.path(base_dir, "significantqtl.pdf")
 ggplot2::ggsave(filename = fname,
                 device = "pdf")
-write.table(res.df, file.path(sim_dir, "result_dataframe.csv"), col.names=TRUE, quote=FALSE, sep=",")
-write.table(getParams(), file.path(sim_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
+
+# Determine the average additive effect size at each 'step'
+eff_size.df <- eff_size.df %>%
+  group_by(orderFixed) %>%
+  summarize(meanEffectSize = mean(effectSize))
+
+g2 <- ggplot(eff_size.df, aes(x=orderFixed, y=meanEffectSize)) +
+  geom_bar(stat="identity")
+
+ggplot2::ggsave(filename = "average_effect_size_fixed.pdf",
+                path=base_dir,
+                device = "pdf")
+
+write.table(res.df, file.path(base_dir, "result_dataframe.csv"), col.names=TRUE, quote=FALSE, sep=",")
+write.table(getParams(), file.path(base_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 ```
 
 Figure out difference (inter-intra) in mean qtl per population
