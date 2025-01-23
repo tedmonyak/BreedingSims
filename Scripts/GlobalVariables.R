@@ -89,7 +89,16 @@ getParams <- function() {
     mappingMethod=n.mappingMethod,
     errorProb=n.errorProb,
     step=n.step,
-    cores=n.cores
+    cores=n.cores,
+    crosses=n.crosses,
+    F1=n.F1,
+    F2=n.F2,
+    F3=n.F3,
+    F4=n.F4,
+    F5=n.F5,
+    F6=n.F6,
+    F7=n.F7,
+    F8=n.F8
   )
   return (t(n.df))
 }
