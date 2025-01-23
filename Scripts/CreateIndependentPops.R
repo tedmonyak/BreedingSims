@@ -23,7 +23,6 @@ for (gen in 1:n.burnInGens) {
 # Create a random vector of size n.pops, with a random order of sub-population ids
 randVec <- sample(rep(c(1:n.nPops), times=n.popSize/n.nPops))
 
-
 # Create n.nPops sub populations
 pops <- vector(mode="list", length=n.nPops)
 for (p in 1:n.nPops) {
@@ -43,7 +42,7 @@ for (p in 1:length(pops)) {
   
   # Get the names of all the QTLs
   qtl <- rownames(qtlEff.df)
-  
+
   # Create a dataframe of all zeros where the columns are the QTL ids, and the # rows is the # of generations
   fit.df <- data.frame(matrix(ncol=length(qtl)+4, nrow=0))
   colnames(fit.df) <- c("gen", "fitness", "traitValA", "traitValB", qtl)
@@ -97,12 +96,16 @@ for (p in 1:length(pops)) {
     color = p,
     line = list(width = 5)
   )
-  
+  fig <- fig %>% layout(legend=list(title=list(text='Population Size')),
+         scene = list(xaxis = list(title = "Trait A"),
+                      yaxis = list(title = "Trait B"),
+                      zaxis = list(title = "Fitness"),
+                      aspectmode='cube')) %>% hide_colorbar()
   
   fname <- file.path(subpop_dir, "adaptivewalk.html")
   htmlwidgets::saveWidget(as_widget(fig), fname)
   
-  plotTraitArchitecture(pop, "Additive")
+  plotTraitArchitecture(pop, "Additive", paste0("Pop ", p))
   
   ggplot2::ggsave(filename = "traitarchitecture.pdf",
                   path=subpop_dir,
@@ -120,7 +123,8 @@ for (p in 1:length(pops)) {
   # Create a line plot for the change in frequency of alleles over time
   # Each line's opacity is a function of its effect size (higher=darker)
   ggplot(freq.df, aes(x=gen, y=freq, color=id, alpha=eff_size)) +
-    geom_line(size=0.7)
+    geom_line(size=0.7, show.legend=FALSE)
+    
   
   ggplot2::ggsave(filename = "allelefrequencies.pdf",
                   path=subpop_dir,

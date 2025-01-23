@@ -33,9 +33,15 @@ SP <- SimParam$new(founders)
 # Allow markers and segmentation sites to overlap
 SP$restrSegSites(overlap = T)
 
-# Create two generic traits with gamma distributions of effect sizes
-SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
-SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
+# Create two generic traits with normal distributions of effect sizes (or gamma, if !normalDist)
+if (normalDist) {
+  SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
+  SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
+} else {
+  SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
+  SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
+}
+
 
 # If we want to use random values for traits, use the following lines
 #SP$addTraitA(mean=runif(1,n.initTraitVal*-1,n.initTraitVal), var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)

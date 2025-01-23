@@ -12,33 +12,29 @@
 # Returns: a population where the first two individuals are parentA and parentB,
 # and the rest is the RIL
 createRIL <- function(popA, popB, save_dir, inter=TRUE) {
+  # Develop elite lines
+  elitePopA <- makeElite(popA)
+  elitePopB <- makeElite(popB)
   # Select 2 random individuals from popA
-  aIdx <- sample.int(nInd(popA),2)
+  aIdx <- sample.int(nInd(elitePopA),2)
   # parentA always comes from popA
-  parentA <- popA[aIdx[1]]
-  
-  # 
+  parentA <- elitePopA[aIdx[1]]
   if (inter) {
     # if it is an inter-population cross, select an individual from popB
-    parentB <- popB[sample.int(nInd(popB),1)]
+    parentB <- elitePopB[sample.int(nInd(elitePopB),1)]
   } else {
     # if it is an intra-population cross, take the other random individual from popA
-    parentB <- popA[aIdx[2]]
+    parentB <- elitePopA[aIdx[2]]
   }
-  # Make the parents inbreds by selfing them for 10 generations
-  for (f in 1:10) {
-    parentA <- self(parentA)
-    parentB <- self(parentB)
-  }
-  
+
   # Cross parent A with parent B, and create n.RILFams progeny
   F1 <- randCross2(parentA,
                    parentB,
                    nCrosses=1,
                    nProgeny=n.RILFams)
-  
+
   # Create F10s of each RIL family with SSD
-  F2 <- self(F1)
+  F2 <- self(F1, nProgeny=n.indPerRILFam)
   F3 <- self(F2)
   F4 <- self(F3)
   F5 <- self(F4)
@@ -48,7 +44,7 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
   F9 <- self(F8)
   
   # Each RIL family has n.indPerRILFam replicates
-  RIL <- self(F9, nProgeny=n.indPerRILFam)
+  RIL <- self(F9)
   
   if (inter) {
     trait1.df <- as.data.frame(cbind(pheno(popA)[,1], pheno(popB)[,1], pheno(RIL)[,1]))
@@ -81,7 +77,8 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
                     width=20,
                     height=7)
     fname <- file.path(save_dir, "3DFitness.html")
-    htmlwidgets::saveWidget(as_widget(plot3dPopulationFitnessTwoPops(popA, popB)), fname)
+    fig <- plot3dPopulationFitnessTwoPops(popA, popB)
+    htmlwidgets::saveWidget(as_widget(fig), fname)
   }
   
   plotTraitArchitecture(RIL, "Additive", "RIL")
@@ -91,6 +88,32 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
                   width=10,
                   height=7)
   return (c(parentA, parentB, RIL))
+}
+
+# Simulate a population going through a breeding program, under purifying selection
+# pop: the landrace
+# Returns: an F8 population that has undergone selection and inbreeding
+makeElite <- function(pop) {
+  F1 <- selectCross(pop,
+                    trait=twoTraitFitFunc,
+                    nInd=n.crosses,
+                    nCrosses=n.crosses,
+                    nProgeny=n.F1/n.crosses)
+  F2 <- self(F1, nProgeny=n.F2/n.F1)
+  F2 <- selectInd(F2, trait=twoTraitFitFunc, nInd=n.F2)
+  F3 <- self(F2)
+  F3 <- selectInd(F3, trait=twoTraitFitFunc, nInd=n.F3)
+  F4 <- self(F3)
+  F4 <- selectInd(F4, trait=twoTraitFitFunc, nInd=n.F4)
+  F5 <- self(F4)
+  F5 <- selectInd(F5, trait=twoTraitFitFunc, nInd=n.F5)
+  F6 <- self(F5)
+  F6 <- selectInd(F6, trait=twoTraitFitFunc, nInd=n.F6)
+  F7 <- self(F6)
+  F7 <- selectInd(F7, trait=twoTraitFitFunc, nInd=n.F7)
+  F8 <- self(F7)
+  F8 <- selectInd(F8, trait=twoTraitFitFunc, nInd=n.F8)
+  return (F8)
 }
 
 # Creates a nested association mapping (NAM) population, to be used for GWAS

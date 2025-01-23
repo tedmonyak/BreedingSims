@@ -20,7 +20,7 @@ twoTraitFitFunc <- function(x) {
 # Calculates fitness based on an optimum value of zero for each trait
 # w = -(x^2) + -(y^2)
 calculateFitnessTwoTrait <- function(x,y) {
-  res <- -((x)^2) - (y^2)
+  res <- -((x)^2) - ((y)^2)
   return (res)
 }
 
@@ -30,6 +30,10 @@ calculateFitnessTwoTrait <- function(x,y) {
 # w: the current fitness
 # Returns: a ratio between 0 and 1 which determines what percentage of individuals to advance
 selectionRatio <- function(w) {
+  # If at fitness optimum, return n.selProp
+  if (w == 0) {
+    return (n.selProp)
+  }
   # Based on the simulation parameters, this is the starting fitness value
   initFit <- calculateFitnessTwoTrait(n.initTraitVal,n.initTraitVal)
   # The initial selection ratio
@@ -148,9 +152,10 @@ overlayWalkOnLandscape <- function(df,
 # pop: The population to plot
 # fitCalc: The function for calculating fitness based on two traits
 plot3dPopulationFitness <- function(pop, fitCalc=calculateFitnessTwoTrait) {
+  popSize <- nInd(pop)
   df <- data.frame(traitA=pheno(pop)[,1],
                    traitB=pheno(pop)[,2],
-                   fitness=numeric(nInd(pop)))
+                   fitness=numeric(popSize))
   # Calculate the fitness for each individual in the population
   df <- df %>% mutate(fitness=fitCalc(traitA, traitB))
   fig <- plot_ly()
@@ -205,8 +210,18 @@ plot3dPopulationFitnessTwoPops <- function(popA, popB, fitCalc=calculateFitnessT
       opacity=0.9,
       color=df$pop,
       colors=c("firebrick3", "dodgerblue1"))
-  fig
   return (fig)
+}
+
+# Plots a 2D density plot of the fitness values of a population
+plot2DFitness <- function(pop, fitFunc=calculateFitnessTwoTrait) {
+  df <- data.frame(traitA=pheno(pop)[,1],
+                   traitB=pheno(pop)[,2],
+                   Fitness=numeric(nInd(pop)))
+  df <- df %>% mutate(fitness=fitCalc(traitA, traitB))
+  g <- ggplot(df, aes(x=fitness)) +
+    geom_density()
+  return(g)
 }
 
 # Creates a 3D fitness landscape and returns a plot_ly rendering of it.
@@ -245,12 +260,13 @@ plotFitness <- function(df) {
 
 # Plot Genetic Values for Two Traits
 plotHist <- function(pop) {
-  gv_a = gv(pop)[,1]
-  gv_b = gv(pop)[,2]
-  idx = c(1:length(gv_a))
-  df <- data.frame(gv_a, gv_b)
-  df <- melt(as.data.table(df))
-  g <- ggplot(df, aes(x=value, color=variable)) + geom_histogram(binwidth=1, position='identity')
+  df <- as.data.frame(cbind(gv(pop)[,1], gv(pop)[,2]))
+  colnames(df) <- c("trait1", "trait2")
+  df <- df %>%
+    pivot_longer(c("trait1", "trait2"), names_to="trait", values_to="gv")
+  g <- ggplot(df, aes(gv, fill=trait, color=trait)) +
+    geom_density(alpha=0.1) +
+    labs(title="Genetic Values")
   return (g)
 }
 

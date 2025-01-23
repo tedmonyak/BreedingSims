@@ -8,7 +8,6 @@
 hetLocus <- function(locus) {
   return (length(unique(locus)) > 1)
 }
-
 # Get the QTL of all traits in a population
 # Since QTL can be overlapping between traits, we must filter out the
 # duplicated QTL

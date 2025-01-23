@@ -43,7 +43,6 @@ source("Functions/MappingPopulations.R")
 source("Functions/QtlMapping.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalVariables.R")
-source("Scripts/CreateFounderPop.R")
 output_dir <- file.path(getwd(), "Output")
 if (!dir.exists(output_dir)) dir.create(output_dir)
 ```
@@ -168,6 +167,7 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 dir.create(save_dir)
 
 source("Scripts/GlobalVariables.R")
+#source("Scripts/CreateFounderPop.R")
 source("Scripts/CreateIndependentPops.R")
 
 # pops is created in CreateIndependentPops
@@ -198,78 +198,86 @@ operm.hk <- scanone(cross, pheno.col=phes, method=n.mappingMethod,
 ```
 
 QTL Monte Carlo Simulation
-This will run n.popResets * n.sims simulations, and for each simulation,
+This will run n.popResets * n.sims * n.rilSims simulations, and for each simulation,
 create two subpopulations, then two biparental RIL populations:
 1 "inter" (parents come from different subpopulations),
 1 "intra" (parents come from the same sub population)
 For each RIL, calculate and store the number of signficant LOD peaks in the linkage map
 ```{r}
-n.gens <- 100
-n.selProp < 0.2
-n.subPopSize <- 200
-n.margin <- -5
-n.markers <- 500
-n.initTraitValue <- 10
-n.var <- 0.1
 # Number of founder populations to simulate
-n.popResets <- 10
-# Number of simulations per founder population
-n.sims <- 10
+n.popResets <- 4
+# Number of adaptive walk simulations per founder population
+n.adaptiveWalks <- 5
+# Number of RIL simulations per pair of subpopulations
+n.sims <- 5
+
+n.selProp <- 0.3
+n.r < 0.8
+n.gens <- 200
+
 # Result dataframe
 res.df <- data.frame(pop=c(),
+                     walk=c(),
                      sim=c(),
                      type=c(),
                      nSigQtl=c())
 
-sim_dir <- file.path(output_dir, "QtlMonteCarlo")
-if (!dir.exists(sim_dir)) dir.create(sim_dir)
-sim_dir <- file.path(sim_dir, format(Sys.time(), "%F_%H_%M_%S"))
-dir.create(sim_dir)
+base_dir <- file.path(output_dir, "QtlMonteCarlo")
+if (!dir.exists(base_dir)) dir.create(base_dir)
+base_dir <- file.path(base_dir, format(Sys.time(), "%F_%H_%M_%S"))
+dir.create(base_dir)
 
 # Reset the founder population n.popResets times
 for (r in 1:n.popResets) {
-  pop_dir <- file.path(sim_dir, paste0("Founder Population ", r))
+  pop_dir <- file.path(base_dir, paste0("Founder Population ", r))
   dir.create(pop_dir)
   print(paste0("Pop Reset ", r))
   source("Scripts/CreateFounderPop.R")
   # For each founder population, create independent populations n.sims times
-  for (s in 1:n.sims) {
-    save_dir <- file.path(pop_dir, paste0("Run ", s))
+  for (a in 1:n.adaptiveWalks) {
+    save_dir <- file.path(pop_dir, paste0("Adaptive Walk ", a))
     dir.create(save_dir)
-    print(paste0("Sim ", s))
+    print(paste0("Adaptive Walk ", a))
     source("Scripts/CreateIndependentPops.R")
-    # Create a biparental RIL population by sampling one individual from each subpopulation
-    # TODO select top parent from each population?
-    res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=save_dir, inter=TRUE)
-    # Select the parents from the result, and the RIL population
-    RIL <- res[-(1:2)]
-    parentA <- res[1]
-    parentB <- res[2]
-    qtl_dir <- file.path(save_dir, "Inter")
-    dir.create(qtl_dir)
-    # Determine the number of significant QTL
-    nQtl <- getSigQtl(RIL, parentA, parentB, qtl_dir)
-    
-    res.df <- rbind(res.df, data.frame(pop=r,
-                                       sim=s,
-                                       type="Inter",
-                                       nSigQtl=nQtl))
-    # Create a biparental RIL population by sampling two individuals from the same subpopulation
-    # By providing NA instead of a population, the createRIL function does an intra-population cross
-    res <- createRIL(popA=pops[[1]], save_dir=save_dir, inter=FALSE)
-    RIL <- res[-(1:2)]
-    parentA <- res[1]
-    parentB <- res[2]
-    qtl_dir <- file.path(save_dir, "Intra")
-    dir.create(qtl_dir)
-    nQtl <- getSigQtl(RIL, parentA, parentB, qtl_dir)
-    # Update the result dataframe
-    res.df <- rbind(res.df, data.frame(pop=r,
-                                       sim=s,
-                                       type="Intra",
-                                       nSigQtl=nQtl))
-  }
-}
+    for (s in 1:n.sims) {
+      run_dir <- file.path(save_dir, paste0("_Run ", s))
+      dir.create(run_dir)
+      print(paste0("Sim ", s))
+      # Create a biparental RIL population by sampling one individual from each subpopulation
+      # TODO select top parent from each population?
+      res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=run_dir, inter=TRUE)
+      # Select the parents from the result, and the RIL population
+      RIL <- res[-(1:2)]
+      parentA <- res[1]
+      parentB <- res[2]
+      qtl_dir <- file.path(save_dir, "Inter")
+      dir.create(qtl_dir)
+      # Determine the number of significant QTL
+      nQtl <- getSigQtl(RIL, parentA, parentB, qtl_dir)
+      
+      res.df <- rbind(res.df, data.frame(pop=r,
+                                         walk=a,
+                                         sim=s,
+                                         type="Inter",
+                                         nSigQtl=nQtl))
+      # Create a biparental RIL population by sampling two individuals from the same subpopulation
+      res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=run_dir, inter=FALSE)
+      RIL <- res[-(1:2)]
+      parentA <- res[1]
+      parentB <- res[2]
+      qtl_dir <- file.path(save_dir, "Intra")
+      dir.create(qtl_dir)
+      nQtl <- getSigQtl(RIL, parentA, parentB, qtl_dir)
+      # Update the result dataframe
+      res.df <- rbind(res.df, data.frame(pop=r,
+                                         walk=a,
+                                         sim=s,
+                                         type="Intra",
+                                         nSigQtl=nQtl))
+    } # end n.sims
+  } # end n.adaptiveWalks
+} # end n.popResets
+
 g <- ggplot(data=res.df, aes(x=type, y=nSigQtl, fill=type)) +
       geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
       stat_compare_means(method="anova", label.x = 1.3, label.y= 13) +
