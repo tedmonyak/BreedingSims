@@ -13,8 +13,9 @@ addSnpChip <- TRUE # If true, will add a SNP chip with n.markers markers
 basicPop <- TRUE # If true, uses runMacs. If false, uses runMacs2 with more custom parameters
 
 # TRAITS
-n.qtlPerChr = 20 # Number of qtl per chromosome, per trait
-n.h2 <- 0.6 # Narrow-sense heritability for each trait
+n.qtlPerChr = 10 # Number of qtl per chromosome, per trait
+n.h2 <- 0.2 # Narrow-sense heritability for each acquired trait for landrace adaptation
+n.h2Breeding <- 0.5 # Narrow-sense heriability for each acquired trait for breeding adaptation
 n.initTraitVal <- 1 # Starting value for each of the two traits
 n.var <- 0.1 # Initial variance for each trait. This is used as the 'rate' parameter in a gamma distribution
 n.shape <- 1 # Initial shape for the gamma distribution for each trait

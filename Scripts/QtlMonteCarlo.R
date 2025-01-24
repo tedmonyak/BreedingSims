@@ -47,6 +47,7 @@ n.sims <- 25
 
 n.selProp <- 0.2
 n.h2 <- 0.2
+n.h2Breeding <- 0.5
 
 n.qtlPerChr <- 3
 #n.qtlPerChr <- 5
@@ -87,7 +88,11 @@ for (r in 1:n.popResets) {
     print(paste0("Sim ", s))
     save_dir <- file.path(pop_dir, paste0("Sim", s))
     dir.create(save_dir)
+    # Landrace heritability
+    SP$setVarE(h2=c(n.h2, n.h2))
     source("Scripts/CreateIndependentPops.R")
+    # Breeding heritability
+    SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding))
     # Create a biparental RIL population by sampling one individual from each subpopulation
     # TODO select top parent from each population?
     res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=save_dir, inter=TRUE)

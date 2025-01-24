@@ -194,7 +194,7 @@ freq.df <- data.frame(gen=1:n.gens)
 qtlEff.df <- getQtlEffectSizes(pop)
 
 # Get the names of all the QTLs
-qtl <- rownames(qtlEff.df)
+qtl <- colnames(getUniqueQtl(pop))
 
 # Create a dataframe of all zeros where the columns are the QTL ids, and the # rows is the # of generations
 qtl.df <- data.frame(matrix(0, ncol=length(qtl), nrow=n.gens))
@@ -213,7 +213,7 @@ for(gen in 1:n.gens) {
     # id is the name of the qtl (chr_site)
     id <- qtl[l]
     # A list of genotype data for each individual in the population at that locus
-    locus <- qtlGeno[,l]
+    locus <- qtlGeno[,id]
     # Calculate the allele frequency as the frequency of homozygous individuals (for 'allele') +
     # 1/2 * frequency of heterozygous individuals (assumes the locus is biallelic)
     freq.df[gen,id] <- (sum(locus==n.allele)/n.popSize) + ((sum(locus==1)/n.popSize)/2)
@@ -386,6 +386,11 @@ eff_size_df <- data.frame(orderFixed=c(),
 for (p in 1:n.popResets) {
   print(paste0("Pop Reset: ", p))
   source("Scripts/CreateFounderPop.R")
+  # Get the effect sizes of each qtl
+  qtlEff.df <- getQtlEffectSizes(pop)
+  
+  # Get the names of all the QTLs
+  qtl <- colnames(getUniqueQtl(pop))
   for (s in 1:n.sims) {
     pop <- founderPop
     pop_df <- data.frame(gen=1:n.gens,
@@ -420,22 +425,17 @@ for (p in 1:n.popResets) {
       # Get the qtl genotypes from the current and new populations, so we can compare them
       prevGeno <- getUniqueQtl(prevPop)
       newGeno <- getUniqueQtl(pop)
-      cols <- colnames(newGeno)
-      n.loci <- length(cols)
-      # Iterate through all loci
-      for (l in 1:n.loci) {
-        id <- cols[l]
-        prevLocus = prevGeno[,l]
-        newLocus = newGeno[,l]
+      # Iterate through all qtl
+      for (l in 1:length(qtl)) {
+        id <- qtl[l]
+        prevLocus = prevGeno[,id]
+        newLocus = newGeno[,id]
         # Check if the allele was segregating and became fixed in this generation
         if (hetLocus(prevLocus) && !hetLocus(newLocus)) {
           # Increment the order counter after this generation
           inc <- TRUE
           # Determine the effect size, based on additivity
-          effSizeA <- getEffectSize(prevLocus,
-                                   id,
-                                   prevPop,
-                                   "Additive")
+          effSizeA <- qtlEff.df[id,1]
           #print(paste0("Gen: ", gen, ", Order: ", idx, ", Loc: ", id, ": ", effSizeA)) # REMOVE
           # Determine the effect size based on fitness
           effSizeF <- getEffectSize(prevLocus,
