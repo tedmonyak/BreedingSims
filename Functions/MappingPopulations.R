@@ -91,15 +91,19 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
 }
 
 # Simulate a population going through a breeding program, under purifying selection
+# First, the top landrace individuals are purified
 # pop: the landrace
 # Returns: an F8 population that has undergone selection and inbreeding
 makeElite <- function(pop) {
-  F1 <- selectCross(pop,
-                    trait=twoTraitFitFunc,
-                    nInd=n.crosses,
-                    nCrosses=n.crosses,
-                    nProgeny=n.F1/n.crosses)
-  F2 <- self(F1, nProgeny=n.F2/n.F1)
+  purifiedLandraces <- selectInd(pop, trait=twoTraitFitFunc, nInd=n.landraces)
+  # Purify each landrace
+  for (f in 1:10) {
+    purifiedLandraces <- self(purifiedLandraces)
+  }
+  # Create n.landrace x n.landrace F1s
+  F1 <- randCross(purifiedLandraces, nCrosses=(n.landraces^2), simParam=SP)
+  # Create enough F2s to select n.F2 to advance
+  F2 <- self(F1, nProgeny=ceiling(n.F2/nInd(F1)))
   F2 <- selectInd(F2, trait=twoTraitFitFunc, nInd=n.F2)
   F3 <- self(F2)
   F3 <- selectInd(F3, trait=twoTraitFitFunc, nInd=n.F3)

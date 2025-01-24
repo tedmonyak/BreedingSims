@@ -47,7 +47,7 @@ for (p in 1:length(pops)) {
   qtlEff.df <- getQtlEffectSizes(pop)
   
   # Get the names of all the QTLs
-  qtl <- rownames(qtlEff.df)
+  qtl <- colnames(getUniqueQtl(pop))
 
   # Create a dataframe of all zeros where the columns are the QTL ids, and the # rows is the # of generations
   fit.df <- data.frame(matrix(ncol=length(qtl)+4, nrow=0))
@@ -58,7 +58,7 @@ for (p in 1:length(pops)) {
       # Get the qtl genotype data
       qtlGeno <- getUniqueQtl(pop)
       alleleFreq <- data.frame(matrix(0, nrow=1, ncol=length(qtl)))
-      colnames(alleleFreq) <- qtl
+      colnames(alleleFreq) <- colnames(qtlGeno)
 
       # At each stage, select the top individuals according to how close each 
       # is from the fitness optimum
@@ -76,12 +76,12 @@ for (p in 1:length(pops)) {
         # id is the name of the qtl (chr_site)
         id <- qtl[l]
         # A list of genotype data for each individual in the population at that locus
-        locus <- qtlGeno[,l]
+        locus <- qtlGeno[,id]
         # Calculate the allele frequency as the frequency of homozygous individuals (for 'allele') +
         # 1/2 * frequency of heterozygous individuals (assumes the locus is biallelic)
-        alleleFreq[1,id] <- (sum(locus==n.allele)/n.popSize) + ((sum(locus==1)/n.popSize)/2)
+        alleleFreq[1,id] <- (sum(locus==n.allele)/n.subPopSize) + ((sum(locus==1)/n.subPopSize)/2)
         
-        newLocus <- newGeno[,l]
+        newLocus <- newGeno[,id]
         if (hetLocus(locus) && !hetLocus(newLocus)) {
           # Increment the order counter after this generation
           inc <- TRUE
@@ -128,14 +128,6 @@ for (p in 1:length(pops)) {
   
   fname <- file.path(subpop_dir, "adaptivewalk.html")
   htmlwidgets::saveWidget(as_widget(fig), fname)
-  
-  plotTraitArchitecture(pop, "Additive", paste0("Pop ", p))
-  
-  ggplot2::ggsave(filename = "traitarchitecture.pdf",
-                  path=subpop_dir,
-                  device = "pdf",
-                  width=10,
-                  height=7)
 
   # Make the dataframe tidy
   freq.df <- fit.df[-c(2:4)]
@@ -145,9 +137,11 @@ for (p in 1:length(pops)) {
   freq.df <- merge(freq.df, qtlEff.df, by.x="id", by.y="row.names", all.x=TRUE)
   
   # Create a line plot for the change in frequency of alleles over time
-  # Each line's opacity is a function of its effect size (higher=darker)
-  ggplot(freq.df, aes(x=gen, y=freq, color=id, alpha=eff_size)) +
-    geom_line(size=0.7, show.legend=FALSE)
+  # Each line's color is a function of its effect size
+  ggplot(freq.df, aes(x=gen, y=freq, group=id)) +
+    geom_line(aes(color=eff_size), size=0.7, show.legend=TRUE) +
+    scale_color_gradient(low="#FFDC5E", high="#BB0101", "Effect Size") +
+    labs(x="Generation", y="Allele Frequency")
     
   
   ggplot2::ggsave(filename = "allelefrequencies.pdf",
@@ -158,3 +152,4 @@ for (p in 1:length(pops)) {
   write.table(fit.df, file.path(subpop_dir, "fitness.csv"), col.names=TRUE, quote=FALSE, sep=",")
   
 }
+

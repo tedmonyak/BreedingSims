@@ -24,10 +24,10 @@ normalDist <- TRUE # if true, uses a normal distribution for trait values. If fa
 # ADAPTIVE WALKS
 n.margin <- 0 # Populations will terminate their adaptive walks once they reach this fitness value
 n.burnInSelProp <- 0.95 # % of the population to advance during burn-in
-n.gens <- 200 # maximum number of generations for an adaptive walk
+n.gens <- 100 # maximum number of generations for an adaptive walk
 n.burnInGens <- 5 # number of burn-in generations for founder population
 n.nPops <- 2 # number of independent subpopulations to create
-n.selProp <- 0.9 # % of the population to advance during main adaptive walk
+n.selProp <- 0.2 # % of the population to advance during main adaptive walk
 n.r <- 1 # the r value to use in the geometric series for a decaying selection intensity. Set to 1 for a non-decaying intensity, and decrease this to increase the rate of decay
 
 # SIMULATIONS
@@ -40,8 +40,7 @@ n.RILFams <- 200 # number of RIL families to create
 n.indPerRILFam <- 4 # number of replicates in each RIL family
 
 # BREEDING
-n.crosses <- 20 # Initial number of individuals to select and cross from a landrace
-n.F1 <- 500 
+n.landraces <- 20 # Initial number of individuals to select from each landraces to purify
 n.F2 <- 1000
 n.F3 <- 500
 n.F4 <- 200
@@ -91,8 +90,7 @@ getParams <- function() {
     errorProb=n.errorProb,
     step=n.step,
     cores=n.cores,
-    crosses=n.crosses,
-    F1=n.F1,
+    landraces=n.landraces,
     F2=n.F2,
     F3=n.F3,
     F4=n.F4,

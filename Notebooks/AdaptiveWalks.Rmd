@@ -30,7 +30,7 @@ set.seed(123)
 
 source("Functions/Fitness.R")
 source("Functions/TraitArchitecture.R")
-source("Scripts/GlobalVariables.R")
+source("Scripts/GlobalParameters.R")
 source("Scripts/CreateFounderPop.R")
 
 output_dir <- file.path(getwd(), "Output")
@@ -267,7 +267,7 @@ n.gens <- 200
 
 # Reset variables
 source("Scripts/CreateFounderPop.R")
-source("Scripts/GlobalVariables.R")
+source("Scripts/GlobalParameters.R")
 
 pop <- founderPop
 df <- data.frame(gen=c(),
@@ -524,7 +524,7 @@ htmlwidgets::saveWidget(as_widget(p), fname)
 
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
 ```{r}
-source("Scripts/GlobalVariables.R")
+source("Scripts/GlobalParameters.R")
 source("Scripts/CreateFounderPop.R")
 
 fit_df <- data.frame(gen=1:n.burnInGens,
