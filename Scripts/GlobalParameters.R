@@ -7,15 +7,15 @@ n.popSize = 1000 # Num. individuals in the founder population
 n.subPopSize = 100 # Num individuals in the independent sub-populations
 n.ne = n.popSize # Effective population size
 n.segSites = 1000 # Initial # segregating alleles per chromosome in the population
-n.markers = 500 # Num. loci per chromosome to include on the SNP chip 
+n.markers = 1000 # Num. loci per chromosome to include on the SNP chip 
 n.chr <- 10 # Num. chromosomes (sorghum has 10)
 addSnpChip <- TRUE # If true, will add a SNP chip with n.markers markers
 basicPop <- TRUE # If true, uses runMacs. If false, uses runMacs2 with more custom parameters
 
 # TRAITS
 n.qtlPerChr = 10 # Number of qtl per chromosome, per trait
-n.h2 <- 0.2 # Narrow-sense heritability for each acquired trait for landrace adaptation
-n.h2Breeding <- 0.5 # Narrow-sense heriability for each acquired trait for breeding adaptation
+n.h2 <- 0.5 # Narrow-sense heritability for each acquired trait for landrace adaptation
+n.h2Breeding <- 0.7 # Narrow-sense heriability for each acquired trait for breeding adaptation
 n.initTraitVal <- 1 # Starting value for each of the two traits
 n.var <- 0.1 # Initial variance for each trait. This is used as the 'rate' parameter in a gamma distribution
 n.shape <- 1 # Initial shape for the gamma distribution for each trait
@@ -28,12 +28,11 @@ n.burnInSelProp <- 0.95 # % of the population to advance during burn-in
 n.gens <- 100 # maximum number of generations for an adaptive walk
 n.burnInGens <- 5 # number of burn-in generations for founder population
 n.nPops <- 2 # number of independent subpopulations to create
-n.selProp <- 0.2 # % of the population to advance during main adaptive walk
+n.selProp <- 0.25 # % of the population to advance during main adaptive walk
 n.r <- 1 # the r value to use in the geometric series for a decaying selection intensity. Set to 1 for a non-decaying intensity, and decrease this to increase the rate of decay
 
 # SIMULATIONS
 n.popResets <- 4 # number of times to reset the founder population in a simulation
-n.adaptiveWalks <- 5  # number of times to run a  set of adaptive walks per founder population
 n.sims <- 100 # number of monte carlo simulations to run per set of parameters
 
 # MAPPING POPULATIONS
@@ -55,7 +54,13 @@ n.mappingMethod <- "hk" # One of 'hk' (Haley-Knott), 'em', 'imp' (imputation), o
 n.errorProb <- 0.001 # assumed genotyping error rate. See ?calc.genoprob
 n.step <- 1 # max distance b/t calculated genotype probabilities. See ?calc.genoprob
 n.cores <- 8 # Number of cores to use for QTL mapping and population generation
-saveQtlPlots <- FALSE # If true, will write each qtl plot to disk. Should be off for monte carlo simulations
+n.minMarkers <- 5 # Minimum number of markers per chromosome required to do QTL mapping after all het and monomorphic markers have been removed
+
+# Plotting
+saveQtlPlots <- TRUE # If true, will write each qtl plot to disk.
+saveTraitPlots <- TRUE # If true, will write trait distribution and architecture plots to disk.
+saveAllelePlots <- TRUE # If true will wire allele frequency plots
+saveFitnessPlots <- FALSE # If true, will write each fitness plot to disk. Should be off for monte carlo simulations
 
 # Function for returning all parameters (including ones that have been updated)
 # for writing to the params.txt file along with graphs
@@ -82,7 +87,6 @@ getParams <- function() {
     gens=n.gens,
     burnInGens=n.burnInGens,
     sims=n.sims,
-    adaptiveWalks=n.adaptiveWalks,
     popResets=n.popResets,
     RILFams=n.RILFams,
     indPerRILFam=n.indPerRILFam,

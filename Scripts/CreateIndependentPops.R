@@ -107,48 +107,52 @@ for (p in 1:length(pops)) {
   
   # All the following graphing is for each subpopulation
   # Plot the adaptive walks
-  fig <- add_trace(
-    fig,
-    fit.df,
-    name = p,
-    x = fit.df$traitValA,
-    y = fit.df$traitValB,
-    z = fit.df$fitness,
-    type = 'scatter3d',
-    mode = 'lines',
-    opacity = 1,
-    color = p,
-    line = list(width = 5)
-  )
-  fig <- fig %>% layout(legend=list(title=list(text='Population Size')),
-         scene = list(xaxis = list(title = "Trait A"),
-                      yaxis = list(title = "Trait B"),
-                      zaxis = list(title = "Fitness"),
-                      aspectmode='cube')) %>% hide_colorbar()
-  
-  fname <- file.path(subpop_dir, "adaptivewalk.html")
-  htmlwidgets::saveWidget(as_widget(fig), fname)
-
-  # Make the dataframe tidy
-  freq.df <- fit.df[-c(2:4)]
-  freq.df<- melt(freq.df, id="gen", variable.name="id", value.name="freq")
-  
-  # Add the qtl effect size data to the dataframe
-  freq.df <- merge(freq.df, qtlEff.df, by.x="id", by.y="row.names", all.x=TRUE)
-  
-  # Create a line plot for the change in frequency of alleles over time
-  # Each line's color is a function of its effect size
-  ggplot(freq.df, aes(x=gen, y=freq, group=id)) +
-    geom_line(aes(color=eff_size), size=0.7, show.legend=TRUE) +
-    scale_color_gradient(low="#FFDC5E", high="#BB0101", "Effect Size") +
-    labs(x="Generation", y="Allele Frequency")
+  if (saveFitnessPlots) {
+    fig <- add_trace(
+      fig,
+      fit.df,
+      name = p,
+      x = fit.df$traitValA,
+      y = fit.df$traitValB,
+      z = fit.df$fitness,
+      type = 'scatter3d',
+      mode = 'lines',
+      opacity = 1,
+      color = p,
+      line = list(width = 5))
+    fig <- fig %>% layout(legend=list(title=list(text='Population Size')),
+                          scene = list(xaxis = list(title = "Trait A"),
+                                       yaxis = list(title = "Trait B"),
+                                       zaxis = list(title = "Fitness"),
+                                       aspectmode='cube')) %>% hide_colorbar()
     
+    fname <- file.path(subpop_dir, "adaptivewalk.html")
+    htmlwidgets::saveWidget(as_widget(fig), fname)
+  }
+
+  if (saveAllelePlots) {
+    # Make the dataframe tidy
+    freq.df <- fit.df[-c(2:4)]
+    freq.df<- melt(freq.df, id="gen", variable.name="id", value.name="freq")
+    
+    # Add the qtl effect size data to the dataframe
+    freq.df <- merge(freq.df, qtlEff.df, by.x="id", by.y="row.names", all.x=TRUE)
+    
+    # Create a line plot for the change in frequency of alleles over time
+    # Each line's color is a function of its effect size
+    ggplot(freq.df, aes(x=gen, y=freq, group=id)) +
+      geom_line(aes(color=eff_size), size=0.7, show.legend=TRUE) +
+      scale_color_gradient(low="#FFDC5E", high="#BB0101", "Effect Size") +
+      labs(x="Generation", y="Allele Frequency")
+    
+    
+    ggplot2::ggsave(filename = "allelefrequencies.pdf",
+                    path=subpop_dir,
+                    device = "pdf",
+                    width=10,
+                    height=7)
+  }
   
-  ggplot2::ggsave(filename = "allelefrequencies.pdf",
-                  path=subpop_dir,
-                  device = "pdf",
-                  width=10,
-                  height=7)
   write.table(fit.df, file.path(subpop_dir, "fitness.csv"), col.names=TRUE, quote=FALSE, sep=",")
   
 }

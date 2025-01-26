@@ -14,6 +14,17 @@ getSigQtl <- function(RIL, parentA, parentB, save_dir) {
   cross <- getCross(RIL, parentA, parentB, "riself")
   # Remove any null markers
   cross <- drop.nullmarkers(cross)
+
+  # Check to see if there are no markers once null markers have been dropped
+  if (length(cross$geno) == 0) {
+    return (0)
+  }
+  # Create a vector of size n.chr to check whether each chromosome has the minimum
+  # number of markers required to do linkage mapping. If not, return '0'
+  markersPerChr <- rep(n.minMarkers, times=n.chr)
+  if (any(nmar(cross) < n.minMarkers)) {
+    return (0)
+  }
   # Get the phenotype names
   phes <- phenames(cross)[1:2]
   # Run QTL mapping
@@ -30,36 +41,38 @@ getSigQtl <- function(RIL, parentA, parentB, save_dir) {
                        returnQTLModel=FALSE,
                        alpha=0.05,
                        controlAcrossCol=TRUE)
-  
-  fname <- file.path(save_dir, "linkagemap.pdf")
-  pdf(fname)
-  cols <- c("blue", "red")
-  plot(out.hk, type="n", ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))), ylab= "LOD Score")
-  for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i])
-  abline(h=summary(operm.hk[1,1]), col="blue", lty = "dotted", lwd=2)
-  abline(h=summary(operm.hk[1,2]), col="red", lty = "dotted", lwd=2)
-  dev.off()
-  
-  # PCA adapted from https://github.com/HighlanderLab/jbancic_alphasimr_plants/blob/main/04_Features/simulateGWAS.R
-  # Merge the genotypes of the QTL
-  geno = rbind(pullSegSiteGeno(RIL), pullSegSiteGeno(parentA), pullSegSiteGeno(parentB))
-  PCA  = dudi.pca(df = geno, center = T, scale = F, scannf = F, nf = 5)
-  (VAF = 100 * PCA$eig[1:5] / sum(PCA$eig)) # variance explained
-  df.PCA = data.frame(
-    "Pop" = c(rep("RIL", RIL@nInd), "Parent A", "Parent B"),
-    "PC1" = PCA$l1$RS1,
-    "PC2" = PCA$l1$RS2)
-  ggplot(df.PCA, aes(x = PC1, y = PC2)) +
-    geom_point(aes(colour = factor(Pop))) +
-    ggtitle("Population structure") +
-    xlab(paste("Pcomp1: ", round(VAF[1], 2), "%", sep = "")) +
-    ylab(paste("Pcomp2: ", round(VAF[2], 2), "%", sep = ""))
-  
-  fname <- file.path(save_dir, "PCA.pdf")
-  ggplot2::ggsave(filename = fname,
-                  device = "pdf",
-                  width=8,
-                  height=8)
+  if (saveQtlPlots) {
+    fname <- file.path(save_dir, "linkagemap.pdf")
+    pdf(fname)
+    cols <- c("blue", "red")
+    plot(out.hk, type="n", ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))), ylab= "LOD Score")
+    for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i])
+    abline(h=summary(operm.hk[1,1]), col="blue", lty = "dotted", lwd=2)
+    abline(h=summary(operm.hk[1,2]), col="red", lty = "dotted", lwd=2)
+    dev.off()
+    
+    # PCA adapted from https://github.com/HighlanderLab/jbancic_alphasimr_plants/blob/main/04_Features/simulateGWAS.R
+    # Merge the genotypes of the QTL
+    geno = rbind(pullSegSiteGeno(RIL), pullSegSiteGeno(parentA), pullSegSiteGeno(parentB))
+    PCA  = dudi.pca(df = geno, center = T, scale = F, scannf = F, nf = 5)
+    (VAF = 100 * PCA$eig[1:5] / sum(PCA$eig)) # variance explained
+    df.PCA = data.frame(
+      "Pop" = c(rep("RIL", RIL@nInd), "Parent A", "Parent B"),
+      "PC1" = PCA$l1$RS1,
+      "PC2" = PCA$l1$RS2)
+    
+    ggplot(df.PCA, aes(x = PC1, y = PC2)) +
+      geom_point(aes(colour = factor(Pop))) +
+      ggtitle("Population structure") +
+      xlab(paste("Pcomp1: ", round(VAF[1], 2), "%", sep = "")) +
+      ylab(paste("Pcomp2: ", round(VAF[2], 2), "%", sep = ""))
+    
+    fname <- file.path(save_dir, "PCA.pdf")
+    ggplot2::ggsave(filename = fname,
+                    device = "pdf",
+                    width=8,
+                    height=8)
+  }
 
   write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
   return (nrow(sigQtl))

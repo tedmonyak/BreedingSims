@@ -80,39 +80,47 @@ htmlwidgets::saveWidget(as_widget(p), fname)
 Simulate several adaptive walks with different population sizes
 ```{r}
 # Different starting population sizes
-n.popSizes <- c(40,200,1000)
+subPopSizes <- c(100,500)
+n.selProp <- 0.8
+n.h2 <- 0.2
+n.var <- 0.1
+n.qtlPerChr <- 5
 
 # Don't use a SNP chip for these simulations
 addSnpChip <- FALSE
 
 fig <- plot_ly()
-fit_df <- data.frame(gen=1:n.gens,
+
+source("Scripts/CreateFounderPop.R")
+pop <- founderPop
+for (gen in 1:n.burnInGens) {
+  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
+}
+
+# Iterate through each population size
+for (p in 1:length(subPopSizes)) {
+  n.subPopSize <- subPopSizes[p]
+  print(n.subPopSize)
+  fit_df <- data.frame(gen=1:n.gens,
                    fitness=numeric(n.gens),
                    traitValA=numeric(n.gens),
                    traitValB=numeric(n.gens))
-
-# Iterate through each population size
-for (p in c(1:length(n.popSizes))) {
-  n.popSize <- n.popSizes[p]
-  print(n.popSize)
-  # Create a new population of that size
-  source("Scripts/CreateFounderPop.R")
-  pop <- founderPop
+  subPop <- selectInd(pop, nInd=n.subPopSize, use="rand")
   # Iterate through the generations, update the result dataframe, and advance
   # progeny based on the two trait fitness funcion
   for(gen in 1:n.gens) {
-    fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
-    fit_df$traitValA[gen] <- meanG(pop)[1]
-    fit_df$traitValB[gen] <- meanG(pop)[2]
-    meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
+    fit_df$fitness[gen] <- mean(twoTraitFitFunc(pheno(subPop)))
+    fit_df$traitValA[gen] <- meanP(subPop)[1]
+    fit_df$traitValB[gen] <- meanP(subPop)[2]
+    meanFitness <- mean(twoTraitFitFunc(pheno(subPop)))
     selRat <- selectionRatio(meanFitness)
-    pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*selRat, nCrosses=n.popSize)
+    subPop <- selectCross(subPop, trait=twoTraitFitFunc, nInd=n.subPopSize*selRat, nCrosses=n.subPopSize)
   }
   # Add a trace to represent this population's adaptive walk
   fig <- add_trace(
     fig,
     fit_df,
-    name = n.popSize,
+    name = n.subPopSize,
     x = fit_df$traitValA,
     y = fit_df$traitValB,
     z = fit_df$fitness,
@@ -122,8 +130,6 @@ for (p in c(1:length(n.popSizes))) {
     color = p,
     line = list(width = 5)
   )
-  
-  
 }
 
 fig <- fig %>%
@@ -140,7 +146,7 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 if (!dir.exists(save_dir)) dir.create(save_dir)
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 
-fname <- file.path(save_dir, paste0("populationSizes_", n.popSizes[1], ",", n.popSizes[2], ",", n.popSizes[3], ".html"))
+fname <- file.path(save_dir, paste0("populationSizes_", subPopSizes[1], ",", subPopSizes[2], ",", subPopSizes[3], ".html"))
 htmlwidgets::saveWidget(as_widget(fig), fname)  
 ```
 

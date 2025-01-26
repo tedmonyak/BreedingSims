@@ -167,7 +167,14 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 dir.create(save_dir)
 
 source("Scripts/GlobalParameters.R")
+
+n.qtlPerChr <- 20
 source("Scripts/CreateFounderPop.R")
+eff_size.df <- data.frame(orderFixed=c(),
+                          effectSize=c())
+n.subPopSize <- 50
+n.selProp <- 0.25
+n.gens <- 100
 source("Scripts/CreateIndependentPops.R")
 
 # pops is created in CreateIndependentPops

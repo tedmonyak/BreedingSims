@@ -47,46 +47,76 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
   RIL <- self(F9)
   
   if (inter) {
-    trait1.df <- as.data.frame(cbind(pheno(popA)[,1], pheno(popB)[,1], pheno(RIL)[,1]))
-    colnames(trait1.df) <- c("popA", "popB", "RIL")
-    trait1.df <- trait1.df %>%
-      pivot_longer(c("popA", "popB", "RIL"), names_to="pop", values_to="pheno")
-    t1 <- ggplot(trait1.df, aes(pheno, fill=pop, color=pop)) +
-      geom_density(alpha=0.1) +
-      labs(title="Trait 1")
-    
-    trait2.df <- as.data.frame(cbind(pheno(popA)[,2], pheno(popB)[,2], pheno(RIL)[,2]))
-    colnames(trait2.df) <- c("popA", "popB", "RIL")
-    trait2.df <- trait2.df %>%
-      pivot_longer(c("popA", "popB", "RIL"), names_to="pop", values_to="pheno")
-    t2 <- ggplot(trait2.df, aes(pheno, fill=pop, color=pop)) +
-      geom_density(alpha=0.1) +
-      labs(title="Trait 2")
-    
-    
-    (t1|t2)
-    ggplot2::ggsave(filename = "trait_distributions.pdf",
+    if (saveTraitPlots) {
+      # Get the max number of individuals
+      n <- max(nInd(popA), nInd(popB), nInd(RIL))
+      
+      # Normalize all of the phenotype vectors to have the same length (filling with NA)
+      # to allow for cbind()
+      phenoAT1 <- pheno(popA)[,1]
+      phenoAT2 <- pheno(popA)[,2]
+      length(phenoAT1) <- n
+      length(phenoAT2) <- n
+      
+      phenoBT1 <- pheno(popB)[,1]
+      phenoBT2 <- pheno(popB)[,2]
+      length(phenoBT1) <- n
+      length(phenoBT2) <- n
+      
+      phenoRilT1 <- pheno(RIL)[,1]
+      phenoRilT2 <- pheno(RIL)[,2]
+      length(phenoRilT1) <- n
+      length(phenoRilT2) <- n
+      
+      trait1.df <- as.data.frame(cbind(phenoAT1,phenoBT1,phenoRilT1))
+      colnames(trait1.df) <- c("popA", "popB", "RIL")
+      trait1.df <- trait1.df %>%
+        pivot_longer(c("popA", "popB", "RIL"), names_to="pop", values_to="pheno") %>%
+        drop_na()
+      t1 <- ggplot(trait1.df, aes(pheno, fill=pop, color=pop)) +
+        geom_density(alpha=0.1) +
+        labs(title="Trait 1")
+      
+      trait2.df <- as.data.frame(cbind(phenoAT2,phenoBT2,phenoRilT2))
+      colnames(trait2.df) <- c("popA", "popB", "RIL")
+      trait2.df <- trait2.df %>%
+        pivot_longer(c("popA", "popB", "RIL"), names_to="pop", values_to="pheno") %>%
+        drop_na()
+      t2 <- ggplot(trait2.df, aes(pheno, fill=pop, color=pop)) +
+        geom_density(alpha=0.1) +
+        labs(title="Trait 2")
+      
+      
+      (t1|t2)
+      ggplot2::ggsave(filename = "trait_distributions.pdf",
+                      path=save_dir,
+                      device = "pdf",
+                      width=20,
+                      height=7)
+      (plotTraitArchitecture(popA, "Additive", "popA") | plotTraitArchitecture(popB, "Additive", "popB"))
+      ggplot2::ggsave(filename = "popA_popB_traitarchitecture.pdf",
+                      path=save_dir,
+                      device = "pdf",
+                      width=20,
+                      height=7)
+      
+      
+    } # saveTraitPlots
+    if (saveFitnessPlots) {
+      fname <- file.path(save_dir, "3DFitness.html")
+      fig <- plot3dPopulationFitnessTwoPops(popA, popB)
+      htmlwidgets::saveWidget(as_widget(fig), fname)
+    }
+  } # inter
+
+  if (saveTraitPlots) {
+    plotTraitArchitecture(RIL, "Additive", "RIL")
+    ggplot2::ggsave(filename = "RIL_traitarchitecture.pdf",
                     path=save_dir,
                     device = "pdf",
-                    width=20,
+                    width=10,
                     height=7)
-    (plotTraitArchitecture(popA, "Additive", "popA") | plotTraitArchitecture(popB, "Additive", "popB"))
-    ggplot2::ggsave(filename = "popA_popB_traitarchitecture.pdf",
-                    path=save_dir,
-                    device = "pdf",
-                    width=20,
-                    height=7)
-    fname <- file.path(save_dir, "3DFitness.html")
-    fig <- plot3dPopulationFitnessTwoPops(popA, popB)
-    htmlwidgets::saveWidget(as_widget(fig), fname)
   }
-  
-  plotTraitArchitecture(RIL, "Additive", "RIL")
-  ggplot2::ggsave(filename = "RIL_traitarchitecture.pdf",
-                  path=save_dir,
-                  device = "pdf",
-                  width=10,
-                  height=7)
   return (c(parentA, parentB, RIL))
 }
 
