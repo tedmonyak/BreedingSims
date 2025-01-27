@@ -80,18 +80,19 @@ htmlwidgets::saveWidget(as_widget(p), fname)
 Simulate several adaptive walks with different population sizes
 ```{r}
 # Different starting population sizes
-subPopSizes <- c(100,500)
-n.selProp <- 0.8
+subPopSizes <- c(50,100,500)
+n.selProp <- 0.1
 n.h2 <- 0.2
 n.var <- 0.1
 n.qtlPerChr <- 5
+n.gens <- 100
 
 # Don't use a SNP chip for these simulations
 addSnpChip <- FALSE
 
 fig <- plot_ly()
 
-source("Scripts/CreateFounderPop.R")
+#source("Scripts/CreateFounderPop.R")
 pop <- founderPop
 for (gen in 1:n.burnInGens) {
   pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
@@ -128,7 +129,7 @@ for (p in 1:length(subPopSizes)) {
     mode = 'lines',
     opacity = 1,
     color = p,
-    line = list(width = 5)
+    line = list(width = 8)
   )
 }
 
