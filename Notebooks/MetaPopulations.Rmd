@@ -156,6 +156,40 @@ fname <- file.path(save_dir, "EliteVSRil.pdf")
 ggplot2::ggsave(filename = fname,
                 device = "pdf")
 ```
+TODO this function will calculate the fixation index
+```{r}
+# (expected het frequency in metapopulation - mean(expected het frequency in subpopulations) / expected het in metapopulation
+FST <- function(pops) {
+
+  calcExpHet <- function(pop, locus) {
+    p <- (sum(locus==2)/n.subPopSize) + ((sum(locus==1)/n.subPopSize)/2)
+    q <- 1 - p
+    return (2 * p * q)
+  }
+  
+  calcMeanHs <- function(locus) {
+    res <- c(length(pops))
+    for (p in length(pops)) {
+      pop <- pops[p]
+      res[p] <- calcExpHet(pop, locus)
+    }
+    return (mean(res))
+  }
+  
+  calcHt <- function(locus) {
+    allPops <- unlist(pops)
+    
+  }
+    
+  perLocusFST <- function(locus) {
+    ht <- calcHt(locus)
+    meanHs <- calcMeanHs(locus)
+    return ((ht-meanHs)/ht)
+  }
+
+  apply(pullSegSiteGeno(pop), MARGIN=2, FUN=perLocusFST)
+}
+```
 
 1) Pull out individuals from each population and cross them
 2) Create RILs

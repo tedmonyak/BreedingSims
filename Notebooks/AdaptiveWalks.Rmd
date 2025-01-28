@@ -377,33 +377,39 @@ n.nPops populations are created, and each one undergoes n.sims unique adaptive w
 Right now, we do see an upward curve for the additive effect chart. A favored hypothesis:
 - Most of the alleles have a small effect size, so it is more likely that they would be fixed
 ```{r}
-n.sims <- 10
-n.popResets <- 10
-n.selProp <- 0.3
-n.qtlPerChr <- 5
+n.sims <- 100
+n.popResets <- 4
+n.gens <- 100
+n.selProp <- 0.1
+n.qtlPerChr <- 2
+n.margin <- 0
 addSnpChip <- FALSE
 
-fig <- plot_ly()
+if (saveFitnessPlots) {
+  fig <- plot_ly()
+}
 
 # Tidy dataframe to store the order in which each allele is fixed, and the effect size
-eff_size_df <- data.frame(orderFixed=c(),
-                          effectSizeA=c(),
-                          effectSizeF=c())
+effSize.df <- data.frame(orderFixed=c(),
+                          effectSize=c())
 # Create a new population n.nPops times
 for (p in 1:n.popResets) {
   print(paste0("Pop Reset: ", p))
-  source("Scripts/CreateFounderPop.R")
+  #source("Scripts/CreateFounderPop.R")
   # Get the effect sizes of each qtl
-  qtlEff.df <- getQtlEffectSizes(pop)
+  qtlEff.df <- getQtlEffectSizes(founderPop)
   
   # Get the names of all the QTLs
-  qtl <- colnames(getUniqueQtl(pop))
+  qtl <- colnames(getUniqueQtl(founderPop))
   for (s in 1:n.sims) {
     pop <- founderPop
-    pop_df <- data.frame(gen=1:n.gens,
+    if (saveFitnessPlots) {
+      pop_df <- data.frame(gen=1:n.gens,
                          fitness=numeric(n.gens),
                          traitValA=numeric(n.gens),
                          traitValB=numeric(n.gens))
+    }
+    
   
     print(paste0("Sim: ", s))
     # idx is the order in which an allele is fixed along an adaptive walk
@@ -422,66 +428,70 @@ for (p in 1:n.popResets) {
     for (gen in 1:n.gens) {
       meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
       selRat <- selectionRatio(meanFitness)
-      pop_df$fitness[gen] <- meanFitness
-      pop_df$traitValA[gen] <- meanP(pop)[1]
-      pop_df$traitValB[gen] <- meanP(pop)[2]
+      if (saveFitnessPlots) {
+        pop_df$fitness[gen] <- meanFitness
+        pop_df$traitValA[gen] <- meanP(pop)[1]
+        pop_df$traitValB[gen] <- meanP(pop)[2]
+      }
       # Keep track of the current population
       prevPop <- pop
       # Advance the population based on fitness
       pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
       # Get the qtl genotypes from the current and new populations, so we can compare them
-      prevGeno <- getUniqueQtl(prevPop)
-      newGeno <- getUniqueQtl(pop)
-      # Iterate through all qtl
+      # Determine whether each locus is segregating
+      prevHet <- as.data.frame(apply(getUniqueQtl(prevPop), MARGIN=2, FUN=hetLocus))
+      curHet <- as.data.frame(apply(getUniqueQtl(pop), MARGIN=2, FUN=hetLocus))
+      # Join the two sets of genetic data
+      loci <- cbind(prevHet, curHet)
+      colnames(loci) <- c("prev", "cur")
+      # Add a column called "fixed" which is true if the previous genotype was segregating
+      # and the current genotype is not
+      loci <- loci %>%
+        mutate(fixed=mapply(function(p,c) (p && !c), prev, cur))
+      
+      # Iterate through all loci, and if the locus was fixed this generation,
+      # add it to the result dataframe
       for (l in 1:length(qtl)) {
         id <- qtl[l]
-        prevLocus = prevGeno[,id]
-        newLocus = newGeno[,id]
-        # Check if the allele was segregating and became fixed in this generation
-        if (hetLocus(prevLocus) && !hetLocus(newLocus)) {
+        if (loci[id, "fixed"] == TRUE) {
           # Increment the order counter after this generation
           inc <- TRUE
-          # Determine the effect size, based on additivity
-          effSizeA <- qtlEff.df[id,1]
-          #print(paste0("Gen: ", gen, ", Order: ", idx, ", Loc: ", id, ": ", effSizeA)) # REMOVE
-          # Determine the effect size based on fitness
-          effSizeF <- getEffectSize(prevLocus,
-                                    id,
-                                    prevPop,
-                                    "Fitness")
-          # Update the result dataframe
-          new_row <- data.frame(orderFixed=c(idx),
-                                effectSizeA=c(effSizeA),
-                                effectSizeF=c(effSizeF))
-          eff_size_df <- rbind(eff_size_df, new_row)
+          effSize.df <- rbind(effSize.df,
+                              data.frame(orderFixed=c(idx),
+                                         effectSize=c(qtlEff.df[id,1])))
         }
       }
-      
       # Check whether to increment the order counter and reset 'inc'
       if (inc) {
         idx <- idx + 1
         inc <- FALSE
       }
+      # If all alleles are fixed, terminate the simulation
+      if(!any(curHet)) {
+        break
+      }
       # If the population is within n.margin, terminate the simulation
-      if (mean(twoTraitFitFunc(gv(subPop))) >= n.margin) {
+      if (mean(twoTraitFitFunc(pheno(pop))) >= n.margin) {
         break
       }
       
     }
     # Add the adaptive walk of the sub-population
-    fig <- add_trace(
-      fig,
-      pop_df,
-      name = s,
-      x = pop_df$traitValA,
-      y = pop_df$traitValB,
-      z = pop_df$fitness,
-      type = 'scatter3d',
-      mode = 'lines',
-      opacity = 1,
-      color = s,
-      line = list(width = 2)
-    )
+    if (saveFitnessPlots) {
+      fig <- add_trace(
+        fig,
+        pop_df,
+        name = s,
+        x = pop_df$traitValA,
+        y = pop_df$traitValB,
+        z = pop_df$fitness,
+        type = 'scatter3d',
+        mode = 'lines',
+        opacity = 1,
+        color = s,
+        line = list(width = 2)
+      )
+    }
   }
 }
 
@@ -492,41 +502,46 @@ if (!dir.exists(save_dir)) dir.create(save_dir)
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 
 # Determine the average additive effect size at each 'step'
-grouped_df_a <- eff_size_df %>%
-  group_by(orderFixed) %>%
-  summarize(meanEffectSize = mean(effectSizeA))
+groupedEffSize.df <- effSize.df %>%
+  mutate(smoothedOrder=ntile(orderFixed,20)) %>%
+  group_by(smoothedOrder) %>%
+  summarize(meanEffectSize = mean(effectSize))
 
-g_a <- ggplot(data=grouped_df_a, aes(x=orderFixed, y=meanEffectSize)) +
-  geom_bar(stat="identity") +
-  geom_smooth(formula = y ~ a^x)
+theme <- theme(
+       axis.title.x = element_text(family="Helvetica", size=10),
+       axis.title.y = element_text(family="Helvetica", size=10),
+       plot.title = element_text(family="Helvetica", size=12, hjust = 0.5),
+       legend.text = element_text(family="Helvetica", size=6),
+       legend.title = element_text(family="Helvetica", size=6),
+       legend.key = element_rect(linewidth=0.05),
+       plot.caption = element_text(family="Helvetica", size=10, hjust = 0.5),
+       panel.grid.major = element_blank(),
+       panel.grid.minor = element_blank(),
+       panel.background = element_rect(fill = "white", color = "black"),
+       aspect.ratio = 1)
+
+g <- ggplot(groupedEffSize.df, aes(x=smoothedOrder, y=meanEffectSize)) +
+  geom_point() +
+  theme +
+  labs(title="Figure 1", x="Order Fixed", y="Effect Size") +
+  geom_smooth(formula = y ~ x)
 
 ggplot2::ggsave(filename = "average_effect_size_additive.pdf",
                 path=save_dir,
                 device = "pdf")
 
-# Determine the average fitness effect size at each 'step'
-grouped_df_f <- eff_size_df %>%
-  group_by(orderFixed) %>%
-  summarize(meanEffectSize = mean(effectSizeF))
-
-g_f <- ggplot(data=grouped_df_f, aes(x=orderFixed, y=meanEffectSize)) +
-  geom_bar(stat="identity") +
-  geom_smooth(formula = y ~ a^x)
-
-ggplot2::ggsave(filename = "average_effect_size_fitness.pdf",
-                path=save_dir,
-                device = "pdf")
-
 # Create a plot with the adaptive walks
-p <- fig %>%
-  layout(legend=list(title=list(text='Population')),
-         showlegend=FALSE,
-         scene = list(xaxis = list(title = "Trait A"),
-                      yaxis = list(title = "Trait B"),
-                      zaxis = list(title = "Fitness"),
-                      aspectmode='cube')) %>% hide_colorbar()
-fname <- file.path(save_dir, "adaptivewalk.html")
-htmlwidgets::saveWidget(as_widget(p), fname)
+if (saveFitnessPlots) {
+  p <- fig %>%
+    layout(legend=list(title=list(text='Population')),
+           showlegend=FALSE,
+           scene = list(xaxis = list(title = "Trait A"),
+                        yaxis = list(title = "Trait B"),
+                        zaxis = list(title = "Fitness"),
+                        aspectmode='cube')) %>% hide_colorbar()
+  fname <- file.path(save_dir, "adaptivewalk.html")
+  htmlwidgets::saveWidget(as_widget(p), fname)
+}
 ```
 
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.

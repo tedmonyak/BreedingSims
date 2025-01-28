@@ -23,6 +23,8 @@ getUniqueQtl <- function(pop) {
   }
   # Remove duplicate QTL
   qtlGeno <- qtlGeno[, !duplicated(colnames(qtlGeno))]
+  qtlGeno <- qtlGeno[,order(colnames(qtlGeno))]
+  return (qtlGeno)
 }
 
 # Gets the absolute value of the effect size for each qtl
