@@ -377,10 +377,12 @@ n.nPops populations are created, and each one undergoes n.sims unique adaptive w
 Right now, we do see an upward curve for the additive effect chart. A favored hypothesis:
 - Most of the alleles have a small effect size, so it is more likely that they would be fixed
 ```{r}
-n.sims <- 100
-n.popResets <- 4
-n.gens <- 100
+n.sims <- 200
+n.popResets <- 5
+n.gens <- 200
 n.selProp <- 0.1
+n.h2 <- 0.2
+n.subPopSize <- 50
 n.qtlPerChr <- 2
 n.margin <- 0
 addSnpChip <- FALSE
@@ -391,11 +393,14 @@ if (saveFitnessPlots) {
 
 # Tidy dataframe to store the order in which each allele is fixed, and the effect size
 effSize.df <- data.frame(orderFixed=c(),
+                         gen=c(),
+                         fitness=c(),
                           effectSize=c())
 # Create a new population n.nPops times
 for (p in 1:n.popResets) {
   print(paste0("Pop Reset: ", p))
-  #source("Scripts/CreateFounderPop.R")
+  source("Scripts/CreateFounderPop.R")
+
   # Get the effect sizes of each qtl
   qtlEff.df <- getQtlEffectSizes(founderPop)
   
@@ -423,6 +428,9 @@ for (p in 1:n.popResets) {
     for (gen in 1:n.burnInGens) {
       pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
     }
+
+    # Select a subpopulation
+    pop <- selectInd(pop, nInd=n.subPopSize, use="rand")
     
     # Main simulation
     for (gen in 1:n.gens) {
@@ -458,6 +466,8 @@ for (p in 1:n.popResets) {
           inc <- TRUE
           effSize.df <- rbind(effSize.df,
                               data.frame(orderFixed=c(idx),
+                                         gen=c(gen),
+                                         fitness=c(meanFitness),
                                          effectSize=c(qtlEff.df[id,1])))
         }
       }
@@ -500,12 +510,14 @@ if (!dir.exists(save_dir)) dir.create(save_dir)
 save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 if (!dir.exists(save_dir)) dir.create(save_dir)
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
-
+write.table(effSize.df, file.path(save_dir, "effSize.csv"), col.names=TRUE, quote=FALSE, sep=",")
 # Determine the average additive effect size at each 'step'
 groupedEffSize.df <- effSize.df %>%
-  mutate(smoothedOrder=ntile(orderFixed,20)) %>%
-  group_by(smoothedOrder) %>%
-  summarize(meanEffectSize = mean(effectSize))
+  #mutate(smoothedFit=ntile(fitness,50)) %>%
+  mutate(smoothedFit=round(fitness,digits=1)) %>% 
+  group_by(smoothedFit) %>%
+  summarize(meanEffectSize = mean(effectSize), n=n()) %>%
+  filter(n > 10)
 
 theme <- theme(
        axis.title.x = element_text(family="Helvetica", size=10),
@@ -520,12 +532,12 @@ theme <- theme(
        panel.background = element_rect(fill = "white", color = "black"),
        aspect.ratio = 1)
 
-g <- ggplot(groupedEffSize.df, aes(x=smoothedOrder, y=meanEffectSize)) +
+g <- ggplot(groupedEffSize.df, aes(x=smoothedFit, y=meanEffectSize)) +
   geom_point() +
   theme +
   labs(title="Figure 1", x="Order Fixed", y="Effect Size") +
   geom_smooth(formula = y ~ x)
-
+g
 ggplot2::ggsave(filename = "average_effect_size_additive.pdf",
                 path=save_dir,
                 device = "pdf")
