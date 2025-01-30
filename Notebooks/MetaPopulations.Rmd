@@ -202,14 +202,17 @@ dir.create(save_dir)
 
 source("Scripts/GlobalParameters.R")
 
-n.qtlPerChr <- 20
-source("Scripts/CreateFounderPop.R")
+n.qtlPerChr <- 2
+n.h2 <- 0.3
+#source("Scripts/CreateFounderPop.R")
 eff_size.df <- data.frame(orderFixed=c(),
                           effectSize=c())
+n.selProp <- 0.5
 n.subPopSize <- 50
-n.selProp <- 0.25
-n.gens <- 100
+n.gens <- 200
+SP$setVarE(h2=c(n.h2, n.h2))
 source("Scripts/CreateIndependentPops.R")
+SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding))
 
 # pops is created in CreateIndependentPops
 # Create a biparental RIL family

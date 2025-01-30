@@ -14,7 +14,7 @@ basicPop <- TRUE # If true, uses runMacs. If false, uses runMacs2 with more cust
 
 # TRAITS
 n.qtlPerChr = 10 # Number of qtl per chromosome, per trait
-n.h2 <- 0.5 # Narrow-sense heritability for each acquired trait for landrace adaptation
+n.h2 <- 0.3 # Narrow-sense heritability for each acquired trait for landrace adaptation
 n.h2Breeding <- 0.7 # Narrow-sense heriability for each acquired trait for breeding adaptation
 n.initTraitVal <- 1 # Starting value for each of the two traits
 n.var <- 0.1 # Initial variance for each trait. This is used as the 'rate' parameter in a gamma distribution
@@ -28,7 +28,7 @@ n.burnInSelProp <- 0.95 # % of the population to advance during burn-in
 n.gens <- 100 # maximum number of generations for an adaptive walk
 n.burnInGens <- 5 # number of burn-in generations for founder population
 n.nPops <- 2 # number of independent subpopulations to create
-n.selProp <- 0.25 # % of the population to advance during main adaptive walk
+n.selProp <- 0.5 # % of the population to advance during main adaptive walk
 n.r <- 1 # the r value to use in the geometric series for a decaying selection intensity. Set to 1 for a non-decaying intensity, and decrease this to increase the rate of decay
 
 # SIMULATIONS
@@ -41,19 +41,19 @@ n.indPerRILFam <- 4 # number of replicates in each RIL family
 
 # BREEDING
 n.landraces <- 20 # Initial number of individuals to select from each landraces to purify
-n.F2 <- 1000
-n.F3 <- 500
-n.F4 <- 200
-n.F5 <- 100
-n.F6 <- 50
-n.F7 <- 20
-n.F8 <- 4
+n.F2 <- 2000
+n.F3 <- 1000
+n.F4 <- 500
+n.F5 <- 200
+n.F6 <- 100
+n.F7 <- 50
+n.F8 <- 25
 
 # QTL Mapping Parameters
 n.mappingMethod <- "hk" # One of 'hk' (Haley-Knott), 'em', 'imp' (imputation), or others. See ?scanone
 n.errorProb <- 0.001 # assumed genotyping error rate. See ?calc.genoprob
 n.step <- 1 # max distance b/t calculated genotype probabilities. See ?calc.genoprob
-n.cores <- 8 # Number of cores to use for QTL mapping and population generation
+n.cores <- 16 # Number of cores to use for QTL mapping and population generation
 n.minMarkers <- 5 # Minimum number of markers per chromosome required to do QTL mapping after all het and monomorphic markers have been removed
 
 # Plotting

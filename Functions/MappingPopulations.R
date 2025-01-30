@@ -13,18 +13,18 @@
 # and the rest is the RIL
 createRIL <- function(popA, popB, save_dir, inter=TRUE) {
   # Develop elite lines
-  elitePopA <- makeElite(popA)
-  elitePopB <- makeElite(popB)
+  popA <- makeElite(popA)
+  popB <- makeElite(popB)
   # Select 2 random individuals from popA
-  aIdx <- sample.int(nInd(elitePopA),2)
+  aIdx <- sample.int(nInd(popA),2)
   # parentA always comes from popA
-  parentA <- elitePopA[aIdx[1]]
+  parentA <- popA[aIdx[1]]
   if (inter) {
     # if it is an inter-population cross, select an individual from popB
-    parentB <- elitePopB[sample.int(nInd(elitePopB),1)]
+    parentB <- popB[sample.int(nInd(popB),1)]
   } else {
     # if it is an intra-population cross, take the other random individual from popA
-    parentB <- elitePopA[aIdx[2]]
+    parentB <- popA[aIdx[2]]
   }
 
   # Cross parent A with parent B, and create n.RILFams progeny
@@ -74,6 +74,7 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
         pivot_longer(c("popA", "popB", "RIL"), names_to="pop", values_to="pheno") %>%
         drop_na()
       t1 <- ggplot(trait1.df, aes(pheno, fill=pop, color=pop)) +
+        scale_color_manual(values=c("red", "blue", "purple")) +
         geom_density(alpha=0.1) +
         labs(title="Trait 1")
       
@@ -83,6 +84,7 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
         pivot_longer(c("popA", "popB", "RIL"), names_to="pop", values_to="pheno") %>%
         drop_na()
       t2 <- ggplot(trait2.df, aes(pheno, fill=pop, color=pop)) +
+        scale_color_manual(values=c("red", "blue", "purple")) +
         geom_density(alpha=0.1) +
         labs(title="Trait 2")
       

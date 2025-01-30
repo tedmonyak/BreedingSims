@@ -24,6 +24,14 @@ calculateFitnessTwoTrait <- function(x,y) {
   return (res)
 }
 
+# Calculates fitness based on an optimum value of zero for each trait
+# w = -(x^2) + -(y^2)
+calculateFitnessTwoTraitModified <- function(x,y) {
+  res <- -((x)^2) - ((y)^2)
+  res <- res + sqrt(-0.01*res)
+  return (res)
+}
+
 # Calculate a decaying selection ratio based on the distance from the fitness optimum
 # Uses a geometric series to determine the result, where a=(1-n.selProp),
 # r is set as an initial parameter (n.r), and n is a function of the distance from the initial fitness
@@ -77,8 +85,9 @@ theme <- theme(plot.background = ggplot2::element_blank(),
 # Also, supply the min and max trait values for the fitness landscape
 # TODO: add a fixed value to df, because phenotypic data is 'under' the fitness curve
 overlayWalkOnLandscape <- function(df,
+                                   df2,
                                    type="CONTOUR",
-                                   fitCalc,
+                                   fitCalc=calculateFitnessTwoTrait,
                                    trait1Min=-1,
                                    trait1Max=1,
                                    trait2Min=-1,

@@ -45,10 +45,17 @@ n.popResets <- 4
 # Number of adaptive walk simulations per pair of subpopulations
 n.sims <- 25
 
-n.h2 <- 0.2
-n.selProp <- 0.1
-qs <- n.qtlPerChr <- c(2,5,10,20)
-ps = c(50,100,500)
+saveQtlPlots <- TRUE 
+saveTraitPlots <- FALSE
+saveAllelePlots <- FALSE
+saveFitnessPlots <- FALSE
+
+n.h2 <- 0.3
+n.selProp <- 0.5
+n.gens <- 200
+qs <- n.qtlPerChr <- c(20,2)
+ps = c(500,50)
+
 
 for (qx in 1:length(qs)) {
   n.qtlPerChr <- qs[qx]
