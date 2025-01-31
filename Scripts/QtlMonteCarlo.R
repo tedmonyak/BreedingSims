@@ -34,6 +34,7 @@ setwd("~/Documents/CSU/R/BreedingSims")
 source("Functions/Fitness.R")
 source("Functions/GenoConversions.R")
 source("Functions/MappingPopulations.R")
+source("Functions/PopGen.R")
 source("Functions/QtlMapping.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
@@ -42,23 +43,23 @@ output_dir <- file.path(getwd(), "Output")
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 # Number of founder populations to simulate
-n.popResets <- 100
+n.popResets <- 4
 # Number of adaptive walk simulations per pair of subpopulations
-n.sims <- 1
+n.sims <- 25
 
 saveQtlPlots <- FALSE
 saveTraitPlots <- FALSE
 saveAllelePlots <- FALSE
 saveFitnessPlots <- FALSE
-randParams <- TRUE
+randParams <- FALSE
 
 n.h2 <- 0.3
 n.selProp <- 0.5
 n.gens <- 200
+n.var <- 0.01
 
 qs <- c(2,20)
 ps = c(50,500)
-
 
 for (qx in 1:length(qs)) {
   n.qtlPerChr <- qs[qx]
@@ -71,7 +72,8 @@ for (qx in 1:length(qs)) {
     res.df <- data.frame(pop=c(),
                          sim=c(),
                          type=c(),
-                         nSigQtl=c())
+                         nSigQtl=c(),
+                         fst=c())
     
     # Tidy dataframe to store the order in which each allele is fixed, and the effect size
     eff_size.df <- data.frame(orderFixed=c(),
@@ -80,7 +82,7 @@ for (qx in 1:length(qs)) {
     base_dir <- file.path(output_dir, "QtlMonteCarlo")
     if (!dir.exists(base_dir)) dir.create(base_dir)
     base_fname <- paste0(paste0("Ne_", n.subPopSize, "_qtl_", n.qtlPerChr,
-                                "_selProp_", n.selProp, "_h2_", n.h2, "_gens_", n.gens, "_"))
+                                "_selProp_", n.selProp, "_h2_", n.h2, "_gens_", n.gens, "_var_", n.var, "_"))
     base_dir <- file.path(base_dir, paste0(base_fname, format(Sys.time(), "%F_%H_%M")))
     if (!dir.exists(base_dir)) dir.create(base_dir)
     
@@ -102,6 +104,7 @@ for (qx in 1:length(qs)) {
         # Landrace heritability
         SP$setVarE(h2=c(n.h2, n.h2))
         source("Scripts/CreateIndependentPops.R")
+        fst <- FST(pops)
         # Breeding heritability
         SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding))
         qtl_dir <- file.path(save_dir, "Inter")
@@ -114,11 +117,11 @@ for (qx in 1:length(qs)) {
         parentB <- res[2]
         # Determine the number of significant QTL
         nQtl <- getSigQtl(RIL, parentA, parentB, qtl_dir)
-        
         res.df <- rbind(res.df, data.frame(pop=r,
                                            sim=s,
                                            type="Inter",
-                                           nSigQtl=nQtl))
+                                           nSigQtl=nQtl,
+                                           fst=fst))
         
         qtl_dir <- file.path(save_dir, "Intra")
         dir.create(qtl_dir)
@@ -132,7 +135,8 @@ for (qx in 1:length(qs)) {
         res.df <- rbind(res.df, data.frame(pop=r,
                                            sim=s,
                                            type="Intra",
-                                           nSigQtl=nQtl))
+                                           nSigQtl=nQtl,
+                                           fst=NA))
       } # end n.sims
     } # end n.popResets
     
@@ -150,7 +154,15 @@ for (qx in 1:length(qs)) {
     fname <- file.path(base_dir, paste0(base_fname, "significant_qtl.pdf"))
     ggplot2::ggsave(filename = fname,
                     device = "pdf")
-    
+
+    gf <- ggplot(data=res.df, aes(fst)) +
+      geom_density() +
+      labs(title="Average FST", x="FST", y="Density") +
+      theme
+    fname <- file.path(base_dir, paste0(base_fname, "meanfst.pdf"))
+    ggplot2::ggsave(filename = fname,
+                    device = "pdf")
+
     if (saveAllelePlots) {
       # Determine the average additive effect size at each 'step'
       eff_size.df <- eff_size.df %>%
