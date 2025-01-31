@@ -35,25 +35,30 @@ SP$restrSegSites(overlap = T)
 
 # Create two generic traits with normal distributions of effect sizes (or gamma, if !normalDist)
 if (normalDist) {
-  SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
-  SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
+  if (randParams) {
+    SP$addTraitA(mean=n.initTraitVal, var=runif(n=1,min=0,max=0.1), nQtlPerChr=n.qtlPerChr)
+    SP$addTraitA(mean=n.initTraitVal, var=runif(n=1,min=0,max=0.1), nQtlPerChr=n.qtlPerChr)
+  } else {
+    SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
+    SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
+  }
 } else {
   SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
   SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
 }
-
-
-# If we want to use random values for traits, use the following lines
-#SP$addTraitA(mean=runif(1,n.initTraitVal*-1,n.initTraitVal), var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
-#SP$addTraitA(mean=runif(1,n.initTraitVal*-1,n.initTraitVal), var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
 
 # If we want to use more realistic trait values, use the following for height, flowering time, yield
 #SP$addTraitA(mean=55, var=20, nQtlPerChr=c(1,1,1,1,0,0,0,0,0,0), gamma = TRUE, shape = n.shape) # height
 #SP$addTraitA(mean=150, var=50, nQtlPerChr=c(1,1,1,1,0,0,0,0,0,0), gamma = TRUE, shape = n.shape) # flowering time
 #SP$addTraitA(mean=950, var=200, nQtlPerChr = 100, gamma = TRUE, shape = 1) # yield
 
+# If using random parameters, set heritability to be a random value
+if (randParams) {
+  n.h2 <- runif(n=1,min=0,max=0.5)
+}
 # Set heritability for each of the traits
 SP$setVarE(h2=c(n.h2, n.h2))
+
 
 # Add a SNP chip with n.markers*n.chr markers
 if (addSnpChip) SP$addSnpChip(nSnpPerChr=n.markers)

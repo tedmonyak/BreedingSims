@@ -19,12 +19,13 @@ getSigQtl <- function(RIL, parentA, parentB, save_dir) {
   if (length(cross$geno) == 0) {
     return (0)
   }
+  # TODO: Remove this block?
   # Create a vector of size n.chr to check whether each chromosome has the minimum
   # number of markers required to do linkage mapping. If not, return '0'
-  markersPerChr <- rep(n.minMarkers, times=n.chr)
-  if (any(nmar(cross) < n.minMarkers)) {
-    return (0)
-  }
+  #markersPerChr <- rep(n.minMarkers, times=n.chr)
+  #if (any(nmar(cross) < n.minMarkers)) {
+  #  return (0)
+  #}
   # Get the phenotype names
   phes <- phenames(cross)[1:2]
   # Run QTL mapping
@@ -44,11 +45,13 @@ getSigQtl <- function(RIL, parentA, parentB, save_dir) {
   if (saveQtlPlots) {
     fname <- file.path(save_dir, "linkagemap.pdf")
     pdf(fname)
-    cols <- c("blue", "red")
+    cols <- c("coral", "dodgerblue")
     plot(out.hk, type="n", ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))), ylab= "LOD Score")
     for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i])
-    abline(h=summary(operm.hk[1,1]), col="blue", lty = "dotted", lwd=2)
-    abline(h=summary(operm.hk[1,2]), col="red", lty = "dotted", lwd=2)
+    #legend(320, 20, legend=c("Trait A", "Trait B"), fill=cols)
+    title(main="RIL")
+    abline(h=summary(operm.hk[1,1]), col="coral", lty = "dotted", lwd=2)
+    abline(h=summary(operm.hk[1,2]), col="dodgerblue", lty = "dotted", lwd=2)
     dev.off()
     
     # PCA adapted from https://github.com/HighlanderLab/jbancic_alphasimr_plants/blob/main/04_Features/simulateGWAS.R

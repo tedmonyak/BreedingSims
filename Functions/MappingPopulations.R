@@ -67,33 +67,49 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
       phenoRilT2 <- pheno(RIL)[,2]
       length(phenoRilT1) <- n
       length(phenoRilT2) <- n
+
+      theme <- theme(
+        plot.title = element_text(family="Helvetica", size=16, hjust = 0.5),
+        axis.title.x = element_text(family="Helvetica", size=14),
+        axis.title.y = element_text(family="Helvetica", size=14),
+        axis.text.x = element_text(angle = 0, hjust=1, size=12),
+        axis.text.y = element_text(angle = 0, hjust=1, size=12),
+        legend.text = element_text(family="Helvetica", size=12),
+        legend.title = element_text(family="Helvetica", size=12),
+        legend.key = element_rect(linewidth=0.05),
+        plot.caption = element_text(family="Helvetica", size=10, hjust = 0.5),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "white", color = "black"),
+        aspect.ratio = 1)
       
       trait1.df <- as.data.frame(cbind(phenoAT1,phenoBT1,phenoRilT1))
-      colnames(trait1.df) <- c("popA", "popB", "RIL")
+      colnames(trait1.df) <- c("Subpopulation A", "Subpopulation B", "RIL")
       trait1.df <- trait1.df %>%
-        pivot_longer(c("popA", "popB", "RIL"), names_to="pop", values_to="pheno") %>%
+        pivot_longer(c("Subpopulation A", "Subpopulation B", "RIL"), names_to="Population", values_to="pheno") %>%
         drop_na()
-      t1 <- ggplot(trait1.df, aes(pheno, fill=pop, color=pop)) +
-        scale_color_manual(values=c("red", "blue", "purple")) +
+      t1 <- ggplot(trait1.df, aes(pheno, fill=Population, color=Population)) +
+        scale_color_manual(values=c("purple", "red", "blue")) +
         geom_density(alpha=0.1) +
-        labs(title="Trait 1")
+        labs(title="Trait A", x="Trait Value", y="Density") +
+        theme
       
       trait2.df <- as.data.frame(cbind(phenoAT2,phenoBT2,phenoRilT2))
-      colnames(trait2.df) <- c("popA", "popB", "RIL")
+      colnames(trait2.df) <- c("Subpopulation A", "Subpopulation B", "RIL")
       trait2.df <- trait2.df %>%
-        pivot_longer(c("popA", "popB", "RIL"), names_to="pop", values_to="pheno") %>%
+        pivot_longer(c("Subpopulation A", "Subpopulation B", "RIL"), names_to="Population", values_to="pheno") %>%
         drop_na()
-      t2 <- ggplot(trait2.df, aes(pheno, fill=pop, color=pop)) +
-        scale_color_manual(values=c("red", "blue", "purple")) +
+      t2 <- ggplot(trait2.df, aes(pheno, fill=Population, color=Population)) +
+        scale_color_manual(values=c("purple", "red", "blue")) +
         geom_density(alpha=0.1) +
-        labs(title="Trait 2")
+        labs(title="Trait B", x="Trait Value", y="Density") +
+        theme
       
-      
-      (t1|t2)
+      (t1|t2) + plot_layout(guides='collect', axes='collect')
       ggplot2::ggsave(filename = "trait_distributions.pdf",
                       path=save_dir,
                       device = "pdf",
-                      width=20,
+                      width=15,
                       height=7)
       (plotTraitArchitecture(popA, "Additive", "popA") | plotTraitArchitecture(popB, "Additive", "popB"))
       ggplot2::ggsave(filename = "popA_popB_traitarchitecture.pdf",

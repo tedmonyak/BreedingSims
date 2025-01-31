@@ -70,29 +70,31 @@ for (p in 1:length(pops)) {
                            traitValA=meanP(pop)[1],
                            traitValB=meanP(pop)[2])
       pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
-      newGeno <- getUniqueQtl(pop)
-      # Get the frequency of the '2' allele at each locus
-      for (l in 1:length(qtl)) {
-        # id is the name of the qtl (chr_site)
-        id <- qtl[l]
-        # A list of genotype data for each individual in the population at that locus
-        locus <- qtlGeno[,id]
-        # Calculate the allele frequency as the frequency of homozygous individuals (for 'allele') +
-        # 1/2 * frequency of heterozygous individuals (assumes the locus is biallelic)
-        alleleFreq[1,id] <- (sum(locus==n.allele)/n.subPopSize) + ((sum(locus==1)/n.subPopSize)/2)
-        
-        newLocus <- newGeno[,id]
-        if (hetLocus(locus) && !hetLocus(newLocus)) {
-          # Increment the order counter after this generation
-          inc <- TRUE
-          # Update the result dataframe
-          new_row <- data.frame(orderFixed=c(idx),
-                                effectSize=c(qtlEff.df[id,1]))
-          eff_size.df <- rbind(eff_size.df, new_row)
+      if (saveAllelePlots) {
+        newGeno <- getUniqueQtl(pop)
+        # Get the frequency of the '2' allele at each locus
+        for (l in 1:length(qtl)) {
+          # id is the name of the qtl (chr_site)
+          id <- qtl[l]
+          # A list of genotype data for each individual in the population at that locus
+          locus <- qtlGeno[,id]
+          # Calculate the allele frequency as the frequency of homozygous individuals (for 'allele') +
+          # 1/2 * frequency of heterozygous individuals (assumes the locus is biallelic)
+          alleleFreq[1,id] <- (sum(locus==n.allele)/n.subPopSize) + ((sum(locus==1)/n.subPopSize)/2)
+          
+          newLocus <- newGeno[,id]
+          if (hetLocus(locus) && !hetLocus(newLocus)) {
+            # Increment the order counter after this generation
+            inc <- TRUE
+            # Update the result dataframe
+            new_row <- data.frame(orderFixed=c(idx),
+                                  effectSize=c(qtlEff.df[id,1]))
+            eff_size.df <- rbind(eff_size.df, new_row)
+          }
         }
+        # Join the new row with the newly calculated allele frequencies
+        newRow <- cbind(newRow, alleleFreq)
       }
-      # Join the new row with the newly calculated allele frequencies
-      newRow <- cbind(newRow, alleleFreq)
       fit.df <- rbind(fit.df, newRow)
 
       # Check whether to increment the order counter and reset 'inc'
@@ -154,6 +156,5 @@ for (p in 1:length(pops)) {
   }
   
   write.table(fit.df, file.path(subpop_dir, "fitness.csv"), col.names=TRUE, quote=FALSE, sep=",")
-  
 }
 

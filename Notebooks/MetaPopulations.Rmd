@@ -7,11 +7,7 @@ description: This notebook contains scripts for developing breeding metapopulati
 creating mapping populations, and running linkage mapping and GWAS
 ---
 
-```{r setup, include=FALSE, echo=FALSE}
-require("knitr")
-opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
-```
-
+Imports
 ```{r}
 library(AlphaSimR)
 library(ade4)
@@ -45,6 +41,11 @@ source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
 output_dir <- file.path(getwd(), "Output")
 if (!dir.exists(output_dir)) dir.create(output_dir)
+```
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
 ```
 
 Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.
@@ -156,6 +157,7 @@ fname <- file.path(save_dir, "EliteVSRil.pdf")
 ggplot2::ggsave(filename = fname,
                 device = "pdf")
 ```
+
 TODO this function will calculate the fixation index
 ```{r}
 # (expected het frequency in metapopulation - mean(expected het frequency in subpopulations) / expected het in metapopulation
@@ -204,18 +206,18 @@ source("Scripts/GlobalParameters.R")
 
 n.qtlPerChr <- 2
 n.h2 <- 0.3
-#source("Scripts/CreateFounderPop.R")
+source("Scripts/CreateFounderPop.R")
 eff_size.df <- data.frame(orderFixed=c(),
                           effectSize=c())
 n.selProp <- 0.5
 n.subPopSize <- 50
 n.gens <- 200
-SP$setVarE(h2=c(n.h2, n.h2))
 source("Scripts/CreateIndependentPops.R")
-SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding))
 
-# pops is created in CreateIndependentPops
+# Increase heritability for the breeding portion of the simuation
+SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding))
 # Create a biparental RIL family
+# pops is created in CreateIndependentPops
 res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=save_dir, inter=TRUE)
 # Parents A and B are the first two individuals in the result population
 RIL <- res[-(1:2)]

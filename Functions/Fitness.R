@@ -24,8 +24,8 @@ calculateFitnessTwoTrait <- function(x,y) {
   return (res)
 }
 
-# Calculates fitness based on an optimum value of zero for each trait
-# w = -(x^2) + -(y^2)
+# For plotting purposes only - adds a small amount to each calculated value
+# to be able to overlay it onto the surface
 calculateFitnessTwoTraitModified <- function(x,y) {
   res <- -((x)^2) - ((y)^2)
   res <- res + sqrt(-0.01*res)

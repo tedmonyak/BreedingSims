@@ -37,24 +37,27 @@ source("Functions/MappingPopulations.R")
 source("Functions/QtlMapping.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
+
 output_dir <- file.path(getwd(), "Output")
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 # Number of founder populations to simulate
-n.popResets <- 4
+n.popResets <- 100
 # Number of adaptive walk simulations per pair of subpopulations
-n.sims <- 25
+n.sims <- 1
 
-saveQtlPlots <- TRUE 
+saveQtlPlots <- FALSE
 saveTraitPlots <- FALSE
 saveAllelePlots <- FALSE
 saveFitnessPlots <- FALSE
+randParams <- TRUE
 
 n.h2 <- 0.3
 n.selProp <- 0.5
 n.gens <- 200
-qs <- n.qtlPerChr <- c(20,2)
-ps = c(500,50)
+
+qs <- c(2,20)
+ps = c(50,500)
 
 
 for (qx in 1:length(qs)) {
@@ -83,6 +86,10 @@ for (qx in 1:length(qs)) {
     
     # Reset the founder population n.popResets times
     for (r in 1:n.popResets) {
+      # Update selProp to be a random value if using random parameters
+      if (randParams) {
+        n.selProp <- runif(n=1, min=0.1, max=0.5)
+      }
       pop_dir <- file.path(base_dir, paste0("FounderPopulation", r))
       if (!dir.exists(pop_dir)) dir.create(pop_dir)
       print(paste0("Pop Reset ", r))

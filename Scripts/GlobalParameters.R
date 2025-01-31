@@ -11,9 +11,10 @@ n.markers = 1000 # Num. loci per chromosome to include on the SNP chip
 n.chr <- 10 # Num. chromosomes (sorghum has 10)
 addSnpChip <- TRUE # If true, will add a SNP chip with n.markers markers
 basicPop <- TRUE # If true, uses runMacs. If false, uses runMacs2 with more custom parameters
+randParams <- FALSE # If true, uses random parameters for heritability and initial genetic variance
 
 # TRAITS
-n.qtlPerChr = 10 # Number of qtl per chromosome, per trait
+n.qtlPerChr = 2 # Number of qtl per chromosome, per trait
 n.h2 <- 0.3 # Narrow-sense heritability for each acquired trait for landrace adaptation
 n.h2Breeding <- 0.7 # Narrow-sense heriability for each acquired trait for breeding adaptation
 n.initTraitVal <- 1 # Starting value for each of the two traits
@@ -76,6 +77,7 @@ getParams <- function() {
     qtlPerChr=n.qtlPerChr,
     h2=n.h2,
     initTraitVal=n.initTraitVal,
+    randParams=randParams,
     var=n.var,
     shape=n.shape,
     normalDist=normalDist,
