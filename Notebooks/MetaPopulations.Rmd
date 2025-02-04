@@ -27,12 +27,20 @@ library(snow)
 library(tibble)
 library(tidyr)
 library(viridis)
-install_github("jtlovell/qtlTools")
 rm(list = ls())
 
 set.seed(123)
 
-setwd("~/Documents/CSU/R/BreedingSims")
+# If running on Alpine
+setwd("/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+output_dir <- ("/scratch/alpine/c837220672@colostate.edu/Output")
+
+# If running locally:
+#setwd("~/Documents/CSU/R/BreedingSims")
+#output_dir <- file.path(getwd(), "Output")
+
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
 source("Functions/Fitness.R")
 source("Functions/GenoConversions.R")
 source("Functions/MappingPopulations.R")
@@ -40,13 +48,15 @@ source("Functions/PopGen.R")
 source("Functions/QtlMapping.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
-output_dir <- file.path(getwd(), "Output")
-if (!dir.exists(output_dir)) dir.create(output_dir)
 ```
 
 ```{r setup, include=FALSE, echo=FALSE}
 require("knitr")
+# If running locally:
 opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
+
+# If running on alpine:
+opts_knit$set(root.dir = "/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
 ```
 
 Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.

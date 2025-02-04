@@ -4,11 +4,6 @@ output: html_notebook
 author: Ted Monyak
 description: This notebook contains scripts for understanding the dynamics of adaptive walks.
 ---
-```{r setup, include=FALSE, echo=FALSE}
-require("knitr")
-opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
-```
-
 Imports
 ```{r}
 library(AlphaSimR)
@@ -24,7 +19,6 @@ library(snow)
 library(tibble)
 library(tidyr)
 library(viridis)
-devtools::install_github("gdmcdonald/notly")
 library(notly)
 rm(list = ls())
 
@@ -35,7 +29,14 @@ source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
 source("Scripts/CreateFounderPop.R")
 
-output_dir <- file.path(getwd(), "Output")
+# If running on Alpine
+setwd("/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+output_dir <- ("/scratch/alpine/c837220672@colostate.edu/Output")
+
+# If running locally:
+#setwd("~/Documents/CSU/R/BreedingSims")
+#output_dir <- file.path(getwd(), "Output")
+
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 theme <- theme(
@@ -50,6 +51,15 @@ theme <- theme(
        panel.grid.minor = element_blank(),
        panel.background = element_rect(fill = "white", color = "black"),
        aspect.ratio = 1)
+```
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+# If running locally:
+opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
+
+# If running on alpine:
+opts_knit$set(root.dir = "/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+```
 ```
 
 View a fitness landscape
