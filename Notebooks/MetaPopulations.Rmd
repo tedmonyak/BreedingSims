@@ -31,13 +31,16 @@ rm(list = ls())
 
 set.seed(123)
 
-# If running on Alpine
-setwd("/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
-output_dir <- ("/scratch/alpine/c837220672@colostate.edu/Output")
+# Set to false if running on Alpine
+runLocal = TRUE
 
-# If running locally:
-#setwd("~/Documents/CSU/R/BreedingSims")
-#output_dir <- file.path(getwd(), "Output")
+if (runLocal) {
+  setwd("~/Documents/CSU/R/BreedingSims")
+  output_dir <- file.path(getwd(), "Output")
+} else {
+  setwd("/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+  output_dir <- ("/scratch/alpine/c837220672@colostate.edu/Output")
+}
 
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
@@ -52,11 +55,12 @@ source("Scripts/GlobalParameters.R")
 
 ```{r setup, include=FALSE, echo=FALSE}
 require("knitr")
-# If running locally:
-opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
 
-# If running on alpine:
-opts_knit$set(root.dir = "/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+if (runLocal) {
+  opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
+} else {
+  opts_knit$set(root.dir = "/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+}
 ```
 
 Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.

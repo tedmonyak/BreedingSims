@@ -25,12 +25,25 @@ library(snow)
 library(tibble)
 library(tidyr)
 library(viridis)
-install_github("jtlovell/qtlTools")
 rm(list = ls())
 
 set.seed(123)
 
-setwd("~/Documents/CSU/R/BreedingSims")
+# Set to false if running on Alpine
+runLocal = TRUE
+
+if (runLocal) {
+  setwd("~/Documents/CSU/R/BreedingSims")
+  output_dir <- file.path(getwd(), "Output")
+  n.cores <- 16
+} else {
+  setwd("/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+  output_dir <- ("/scratch/alpine/c837220672@colostate.edu/Output")
+  n.cores <- 4
+}
+
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
 source("Functions/Fitness.R")
 source("Functions/GenoConversions.R")
 source("Functions/MappingPopulations.R")
@@ -39,13 +52,10 @@ source("Functions/QtlMapping.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
 
-output_dir <- file.path(getwd(), "Output")
-if (!dir.exists(output_dir)) dir.create(output_dir)
-
 # Number of founder populations to simulate
-n.popResets <- 4
+n.popResets <- 1
 # Number of adaptive walk simulations per pair of subpopulations
-n.sims <- 25
+n.sims <- 2
 
 saveQtlPlots <- FALSE
 saveTraitPlots <- FALSE
@@ -58,8 +68,8 @@ n.selProp <- 0.5
 n.gens <- 200
 n.var <- 0.01
 
-qs <- c(20,2)
-ps = c(500,50)
+qs <- c(2,200)
+ps = c(50,500)
 
 for (px in 1:length(ps)){
   n.subPopSize <- ps[px]
