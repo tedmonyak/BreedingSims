@@ -55,11 +55,10 @@ for (p in 1:length(pops)) {
   
   for (gen in 1:n.gens) {
     if (mean(twoTraitFitFunc(pheno(pop))) < n.margin) {
-      # Get the qtl genotype data
-      qtlGeno <- getUniqueQtl(pop)
-      alleleFreq <- data.frame(matrix(0, nrow=1, ncol=length(qtl)))
-      colnames(alleleFreq) <- colnames(qtlGeno)
-
+      if (saveAllelePlots) {
+        # Get the qtl genotype data
+        qtlGeno <- getUniqueQtl(pop)
+      }
       # At each stage, select the top individuals according to how close each 
       # is from the fitness optimum
       meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
@@ -71,6 +70,8 @@ for (p in 1:length(pops)) {
                            traitValB=meanP(pop)[2])
       pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
       if (saveAllelePlots) {
+        alleleFreq <- data.frame(matrix(0, nrow=1, ncol=length(qtl)))
+        colnames(alleleFreq) <- colnames(qtlGeno)
         newGeno <- getUniqueQtl(pop)
         # Get the frequency of the '2' allele at each locus
         for (l in 1:length(qtl)) {

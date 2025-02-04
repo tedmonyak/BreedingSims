@@ -58,13 +58,13 @@ n.selProp <- 0.5
 n.gens <- 200
 n.var <- 0.01
 
-qs <- c(2,20)
-ps = c(50,500)
+qs <- c(20,2)
+ps = c(500,50)
 
-for (qx in 1:length(qs)) {
-  n.qtlPerChr <- qs[qx]
-  for (px in 1:length(ps)){
-    n.subPopSize <- ps[px]
+for (px in 1:length(ps)){
+  n.subPopSize <- ps[px]
+  for (qx in 1:length(qs)) {
+    n.qtlPerChr <- qs[qx]
     eff_size.df <- data.frame(orderFixed=c(),
                               effectSize=c())
     

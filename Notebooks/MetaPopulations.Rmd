@@ -178,16 +178,19 @@ if (!dir.exists(save_dir)) dir.create(save_dir)
 save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 dir.create(save_dir)
 
-source("Scripts/GlobalParameters.R")
+#source("Scripts/GlobalParameters.R")
 
-n.qtlPerChr <- 2
-n.h2 <- 0.3
+#n.qtlPerChr <- 2
+n.popSize <- 10000
+n.h2 <- 0.1
+n.qtlPerChr <- 1
+n.var <- 0.1
 source("Scripts/CreateFounderPop.R")
 eff_size.df <- data.frame(orderFixed=c(),
                           effectSize=c())
-n.selProp <- 0.5
-n.subPopSize <- 50
-n.gens <- 200
+n.selProp <- 0.1
+n.subPopSize <- 5000
+n.gens <- 100
 source("Scripts/CreateIndependentPops.R")
 
 # Increase heritability for the breeding portion of the simuation

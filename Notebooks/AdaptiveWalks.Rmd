@@ -27,7 +27,7 @@ set.seed(123)
 source("Functions/Fitness.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
-source("Scripts/CreateFounderPop.R")
+#source("Scripts/CreateFounderPop.R")
 
 # If running on Alpine
 setwd("/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
@@ -38,20 +38,9 @@ output_dir <- ("/scratch/alpine/c837220672@colostate.edu/Output")
 #output_dir <- file.path(getwd(), "Output")
 
 if (!dir.exists(output_dir)) dir.create(output_dir)
-
-theme <- theme(
-       axis.title.x = element_text(family="Helvetica", size=10),
-       axis.title.y = element_text(family="Helvetica", size=10),
-       plot.title = element_text(family="Helvetica", size=12, hjust = 0.5),
-       legend.text = element_text(family="Helvetica", size=6),
-       legend.title = element_text(family="Helvetica", size=6),
-       legend.key = element_rect(linewidth=0.05),
-       plot.caption = element_text(family="Helvetica", size=10, hjust = 0.5),
-       panel.grid.major = element_blank(),
-       panel.grid.minor = element_blank(),
-       panel.background = element_rect(fill = "white", color = "black"),
-       aspect.ratio = 1)
 ```
+
+
 ```{r setup, include=FALSE, echo=FALSE}
 require("knitr")
 # If running locally:

@@ -5,13 +5,15 @@
 # The walks are then plotted on a 2d contour graph.
 
 source("Scripts/GlobalParameters.R")
-n.qtlPerChr <- 2
-n.h2 <- 0.3
-n.qtlPerChr <- 2
-n.gens <- 50
-#source("Scripts/CreateFounderPop.R")
-n.selProp <- 0.5
-n.subPopSize <- 50
+n.qtlPerChr <- 20
+n.h2 <- 0.2
+n.var <- 0.01
+n.popSize <- 10000
+n.cores <- 16
+source("Scripts/CreateFounderPop.R")
+n.selProp <- 0.1
+n.subPopSize <- 5000
+n.gens <- 100
 
 fit_df <- data.frame(gen=1:n.burnInGens,
                      fitness=numeric(n.burnInGens),
