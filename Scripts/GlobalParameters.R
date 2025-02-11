@@ -4,7 +4,7 @@
 
 # POPULATION
 n.popSize = 1000 # Num. individuals in the founder population
-n.subPopSize = 100 # Num individuals in the independent sub-populations
+n.subPopSize = 500 # Num individuals in the independent sub-populations
 n.ne = n.popSize # Effective population size
 n.segSites = 1000 # Initial # segregating alleles per chromosome in the population
 n.markers = 1000 # Num. loci per chromosome to include on the SNP chip 
@@ -15,10 +15,10 @@ randParams <- FALSE # If true, uses random parameters for heritability and initi
 
 # TRAITS
 n.qtlPerChr = 2 # Number of qtl per chromosome, per trait
-n.h2 <- 0.3 # Narrow-sense heritability for each acquired trait for landrace adaptation
-n.h2Breeding <- 0.7 # Narrow-sense heriability for each acquired trait for breeding adaptation
+n.h2 <- 0.1 # Narrow-sense heritability for each acquired trait for landrace adaptation
+n.h2Breeding <- 0.6 # Narrow-sense heriability for each acquired trait for breeding adaptation
 n.initTraitVal <- 1 # Starting value for each of the two traits
-n.var <- 0.1 # Initial variance for each trait. This is used as the 'rate' parameter in a gamma distribution
+n.var <- 0.05 # Initial variance for each trait. This is used as the 'rate' parameter in a gamma distribution
 n.shape <- 1 # Initial shape for the gamma distribution for each trait
 n.allele <- 2 # This is the allele for which to track frequency over time
 normalDist <- TRUE # if true, uses a normal distribution for trait values. If false, uses a gamma distribution
@@ -26,10 +26,10 @@ normalDist <- TRUE # if true, uses a normal distribution for trait values. If fa
 # ADAPTIVE WALKS
 n.margin <- 0 # Populations will terminate their adaptive walks once they reach this fitness value
 n.burnInSelProp <- 0.95 # % of the population to advance during burn-in
-n.gens <- 100 # maximum number of generations for an adaptive walk
+n.gens <- 200 # maximum number of generations for an adaptive walk
 n.burnInGens <- 5 # number of burn-in generations for founder population
 n.nPops <- 2 # number of independent subpopulations to create
-n.selProp <- 0.5 # % of the population to advance during main adaptive walk
+n.selProp <- 0.1 # % of the population to advance during main adaptive walk
 n.r <- 1 # the r value to use in the geometric series for a decaying selection intensity. Set to 1 for a non-decaying intensity, and decrease this to increase the rate of decay
 
 # SIMULATIONS
@@ -42,13 +42,13 @@ n.indPerRILFam <- 4 # number of replicates in each RIL family
 
 # BREEDING
 n.landraces <- 20 # Initial number of individuals to select from each landraces to purify
-n.F2 <- 2000
-n.F3 <- 1000
-n.F4 <- 500
-n.F5 <- 200
-n.F6 <- 100
-n.F7 <- 50
-n.F8 <- 25
+n.F2 <- 4000
+n.F3 <- 2000
+n.F4 <- 1000
+n.F5 <- 500
+n.F6 <- 250
+n.F7 <- 125
+n.F8 <- 50
 
 # QTL Mapping Parameters
 n.mappingMethod <- "hk" # One of 'hk' (Haley-Knott), 'em', 'imp' (imputation), or others. See ?scanone
@@ -59,9 +59,10 @@ n.minMarkers <- 5 # Minimum number of markers per chromosome required to do QTL 
 
 # Plotting
 saveQtlPlots <- TRUE # If true, will write each qtl plot to disk.
-saveTraitPlots <- TRUE # If true, will write trait distribution and architecture plots to disk.
-saveAllelePlots <- TRUE # If true will wire allele frequency plots
+saveTraitPlots <- FALSE # If true, will write trait distribution and architecture plots to disk.
+saveAllelePlots <- FALSE # If true will wire allele frequency plots
 saveFitnessPlots <- FALSE # If true, will write each fitness plot to disk. Should be off for monte carlo simulations
+saveEffectSizes <- FALSE # If true, will write the distribution of effect sizes in biparental RILs to disk.
 
 # Function for returning all parameters (including ones that have been updated)
 # for writing to the params.txt file along with graphs

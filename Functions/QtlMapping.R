@@ -43,17 +43,18 @@ getSigQtl <- function(RIL, parentA, parentB, save_dir) {
                        alpha=0.05,
                        controlAcrossCol=TRUE)
   if (saveQtlPlots) {
-    fname <- file.path(save_dir, "linkagemap.pdf")
-    pdf(fname)
-    cols <- c("coral", "dodgerblue")
-    plot(out.hk, type="n", ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))), ylab= "LOD Score")
-    for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i])
-    #legend(320, 20, legend=c("Trait A", "Trait B"), fill=cols)
-    title(main="RIL")
-    abline(h=summary(operm.hk[1,1]), col="coral", lty = "dotted", lwd=2)
-    abline(h=summary(operm.hk[1,2]), col="dodgerblue", lty = "dotted", lwd=2)
+    fname <- file.path(save_dir, "linkagemap2.pdf")
+    pdf(fname, width=11, height=4)
+    par(mar=c(5,5,5,1))
+    cols <- c("forestgreen", "gold2")
+    plot(out.hk, type="n", ylim=c(0,30),#ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))),
+         main="Intra-subpopulation", xlab = "Position", ylab= "LOD Score",
+         cex.main=2, cex.lab=1.5, cex.axis=1.5)
+    for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i], lwd=3)
+    legend(900, 25, legend=c("Trait A", "Trait B"), fill=cols)
+    abline(h=summary(operm.hk[1,1]), col="forestgreen", lty = "dashed", lwd=1)
+    abline(h=summary(operm.hk[1,2]), col="gold2", lty = "dashed", lwd=1)
     dev.off()
-    
     # PCA adapted from https://github.com/HighlanderLab/jbancic_alphasimr_plants/blob/main/04_Features/simulateGWAS.R
     # Merge the genotypes of the QTL
     geno = rbind(pullSegSiteGeno(RIL), pullSegSiteGeno(parentA), pullSegSiteGeno(parentB))

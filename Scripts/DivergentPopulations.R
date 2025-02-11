@@ -5,15 +5,7 @@
 # The walks are then plotted on a 2d contour graph.
 
 source("Scripts/GlobalParameters.R")
-n.qtlPerChr <- 20
-n.h2 <- 0.2
-n.var <- 0.01
-n.popSize <- 10000
-n.cores <- 16
 source("Scripts/CreateFounderPop.R")
-n.selProp <- 0.1
-n.subPopSize <- 5000
-n.gens <- 100
 
 fit_df <- data.frame(gen=1:n.burnInGens,
                      fitness=numeric(n.burnInGens),
@@ -52,9 +44,9 @@ for (gen in 1:n.gens) {
   # If popA is within the margin of the fitness optimum, don't progress it any further
   if (mean(twoTraitFitFunc(pheno(popA))) < n.margin) {
     # Advance the population
-    meanFitness <- mean(twoTraitFitFunc(pheno(popA)))
+    meanFitness <- calculateFitnessTwoTrait(meanP(popA)[1], meanP(popA[2]))
     # Get a selection ratio based on fitness
-    selRat <- selectionRatio(meanFitness)
+    selRat <- n.selProp
     popA <- selectCross(popA, trait=twoTraitFitFunc, nInd=nInd(popA)*selRat, nCrosses=nInd(popA))
     # Update the dataframe with new values
     popA_df <- rbind(popA_df, data.frame(gen=gen,
@@ -66,9 +58,9 @@ for (gen in 1:n.gens) {
   # If popB is within the margin of the fitness optimum, don't progress it any further
   if (mean(twoTraitFitFunc(pheno(popB))) < n.margin) {
     # If popA is within the margin of the fitness optimum, don't progress it any further
-    meanFitness <- mean(twoTraitFitFunc(pheno(popB)))
+    meanFitness <- calculateFitnessTwoTrait(meanP(popB)[1], meanP(popB[2]))
     # Get a selection ratio based on fitnes
-    selRat <- selectionRatio(meanFitness)
+    selRat <- n.selProp
     popB <- selectCross(popB, trait=twoTraitFitFunc, nInd=nInd(popB)*selRat, nCrosses=nInd(popB))
     # Update the dataframe with new values
     popB_df <- rbind(popB_df, data.frame(gen=gen,
@@ -87,7 +79,7 @@ fitness_x = seq(n.initTraitVal*-1,n.initTraitVal*1, by=(n.initTraitVal/100))
 fitness_y = seq(n.initTraitVal*-1,n.initTraitVal*1, by=(n.initTraitVal/100))
 fitness_z = outer(fitness_x,fitness_y,calculateFitnessTwoTrait)
 
-f <- list(family="Arial", size=24)
+f <- list(family="Arial", size=30)
 
 fig <- plot_ly() %>%
   layout(legend=list(text= "Subpopulation"),
@@ -107,32 +99,32 @@ fig <- plot_ly() %>%
   add_trace(
     fig,
     fit_df,
-    name = "Burn-in",
+    name = "Founder Population",
     x = fit_df$traitValA,
     y = fit_df$traitValB,
     type='scatter',
     mode = 'lines',
-    line = list(color = 'orange', width = 4, dash = 'solid'),
+    line = list(color = '#E69138', width = 6, dash = 'solid'),
     opacity = 1) %>%
   add_trace(
     fig,
     popA_df,
-    name = "Subpop 1",
+    name = "Subpopulation 1",
     x = popA_df$traitValA,
     y = popA_df$traitValB,
     type='scatter',
     mode = 'lines',
-    line = list(color = 'red', width = 4, dash = 'solid'),
+    line = list(color = '#CC0000', width = 6, dash = 'solid'),
     opacity = 1) %>%
   add_trace(
     fig,
     popB_df,
-    name = "Subpop 2",
+    name = "Subpopulation 2",
     x = popB_df$traitValA,
     y = popB_df$traitValB,
     type='scatter',
     mode = 'lines',
-    line = list(color = 'blue', width = 4, dash = 'solid'),
+    line = list(color = '#3C78D8', width = 6, dash = 'solid'),
     opacity = 1)
 
 save_dir <- file.path(output_dir, "DivergingPopulations")

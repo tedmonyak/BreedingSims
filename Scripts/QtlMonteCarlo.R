@@ -61,28 +61,25 @@ saveQtlPlots <- FALSE
 saveTraitPlots <- FALSE
 saveAllelePlots <- FALSE
 saveFitnessPlots <- FALSE
+saveEffectSizes <- TRUE
 randParams <- FALSE
 
-n.h2 <- 0.2
+#n.h2 <- 0.2
 n.selProp <- 0.1
-#n.gens <- 200
-n.var <- 0.01
+n.gens <- 200
+n.var <- 0.05
 
-qtl_vec <- c(2,20)
-pop_vec = c(50,500)
-gen_vec <- c(50,100,150,200)
+qtl_vec <- c(2)
+pop_vec = c(500)
+h2_vec = c(0.1)
 
-for (gx in 1:length(gen_vec)) {
-  n.gens <- gen_vec[gx]
-  print(paste0("Gens: ", n.gens))
+for (hx in 1:length(h2_vec)) {
+  n.h2 <- h2_vec[hx]
   for (px in 1:length(pop_vec)){
     n.subPopSize <- pop_vec[px]
-    print(paste0("Pop Size: ", n.subPopSize))
     for (qx in 1:length(qtl_vec)) {
       n.qtlPerChr <- qtl_vec[qx]
-      print(paste0("QTL: ", n.qtlPerChr))
-      eff_size.df <- data.frame(orderFixed=c(),
-                                effectSize=c())
+      print(paste0("h2: ", n.h2, " | POP: ", n.subPopSize, " | QTL: ", n.qtlPerChr))
       
       # Result dataframe
       res.df <- data.frame(pop=c(),
@@ -91,9 +88,14 @@ for (gx in 1:length(gen_vec)) {
                            nSigQtl=c(),
                            fst=c(),
                            gens=c())
+
+      # Effect size dataframe
+      effectSize.df <- data.frame(id=c(),
+                                  eff_size=c(),
+                                  rank=c())
       
       # Tidy dataframe to store the order in which each allele is fixed, and the effect size
-      eff_size.df <- data.frame(orderFixed=c(),
+      fixedAlleles.df <- data.frame(orderFixed=c(),
                                 effectSize=c())
       
       base_dir <- file.path(output_dir, "QtlMonteCarlo")
@@ -132,8 +134,13 @@ for (gx in 1:length(gen_vec)) {
           RIL <- res[-(1:2)]
           parentA <- res[1]
           parentB <- res[2]
+          # Get effect sizes of RIL
+          effSizes <- sortedEffectSizes(RIL)
+          effectSize.df <- rbind(effectSize.df, effSizes)
+          
           # Determine the number of significant QTL
           nQtl <- getSigQtl(RIL, parentA, parentB, qtl_dir)
+
           res.df <- rbind(res.df, data.frame(pop=r,
                                              sim=s,
                                              type="Inter",
@@ -173,6 +180,21 @@ for (gx in 1:length(gen_vec)) {
       fname <- file.path(base_dir, paste0(base_fname, "significant_qtl.pdf"))
       ggplot2::ggsave(filename = fname,
                       device = "pdf")
+      
+      theme <- theme(
+        axis.title.x = element_text(family="Helvetica", size=24),
+        axis.text.x = element_text(angle = 0, hjust=1, size=18),
+        axis.title.y = element_text(family="Helvetica", size=24),
+        axis.text.y = element_text(angle = 0, hjust=1, size=18),
+        plot.title = element_text(family="Helvetica", size=20, hjust = 0.5),
+        legend.text = element_text(family="Helvetica", size=14),
+        legend.title = element_text(family="Helvetica", size=16),
+        legend.key = element_rect(linewidth=0.05),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "white", color = "black"),
+        plot.margin= unit(c(10,10,10,10), unit="pt"),
+        aspect.ratio = 1)
   
       gf <- ggplot(data=res.df, aes(fst)) +
         geom_density() +
@@ -181,21 +203,55 @@ for (gx in 1:length(gen_vec)) {
       fname <- file.path(base_dir, paste0(base_fname, "meanfst.pdf"))
       ggplot2::ggsave(filename = fname,
                       device = "pdf")
+
+      if (saveEffectSizes) {
+        avgEffectSize.df <- effectSize.df %>%
+          group_by(rank) %>%
+          summarize(meanEffectSize = mean(eff_size))
+        
+        #model <- nls(formula=meanEffectSize~ a * b^rank,
+        #             data=effectSize.df,
+        #             start=list(a=1,b=1))
+        
+        ggplot(avgEffectSize.df, aes(x=rank, y=meanEffectSize)) +
+          geom_point() +
+          theme +
+          labs(title="",
+               x="Rank", y="Mean Effect Size") +
+          scale_x_continuous(n.breaks = max(avgEffectSize.df$rank)) +
+          geom_smooth(method="nls",
+                      formula=y ~ (a * b^x),
+                      se=FALSE,
+                      method.args=list(start=c(a=1,b=1)),
+                      color="black") +
+          stat_fit_tidy(method="nls",
+                           method.args=list(formula=y ~ (a * b^x),start=c(a=1,b=1)),
+                           label.x="right",
+                           label.y="top",
+                        aes(label=sprintf("\"Mean Effect Size\"~`=`~%.2g %%*%% %.2g^{\"Rank\"}",
+                                          after_stat(a_estimate),
+                                          after_stat(b_estimate))),
+                        parse=TRUE)
+        
+        fname <- file.path(base_dir, paste0(base_fname, "average_effect_size_RIL.pdf"))
+        ggplot2::ggsave(filename = fname,
+                       device = "pdf")
+      }
   
       if (saveAllelePlots) {
         # Determine the average additive effect size at each 'step'
-        eff_size.df <- eff_size.df %>%
+        fixedAlleles.df <- fixedAlleles.df %>%
           group_by(orderFixed) %>%
           summarize(meanEffectSize = mean(effectSize))
         
-        g2 <- ggplot(eff_size.df, aes(x=orderFixed, y=meanEffectSize)) +
+        g2 <- ggplot(fixedAlleles.df, aes(x=orderFixed, y=meanEffectSize)) +
           geom_bar(stat="identity")
         
         fname <- file.path(base_dir, paste0(base_fname, "average_effect_size_fixed.pdf"))
         ggplot2::ggsave(filename = fname,
                         device = "pdf")
       }
-      
+      write.table(effectSize.df, file.path(base_dir, "effect_size.csv"), col.names=TRUE, quote=FALSE, sep=",")
       write.table(res.df, file.path(base_dir, "result_dataframe.csv"), col.names=TRUE, quote=FALSE, sep=",")
       write.table(getParams(), file.path(base_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
     } # end qtl_vec

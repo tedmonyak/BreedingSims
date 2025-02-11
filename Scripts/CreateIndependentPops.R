@@ -140,13 +140,32 @@ for (p in 1:length(pops)) {
     
     # Add the qtl effect size data to the dataframe
     freq.df <- merge(freq.df, qtlEff.df, by.x="id", by.y="row.names", all.x=TRUE)
+
+    theme <- theme(
+      axis.title.x = element_text(family="Helvetica", size=28),
+      axis.title.y = element_text(family="Helvetica", size=28),
+      axis.text.x = element_text(family="Helvetica", angle = 0, hjust=1, size=20),
+      axis.text.y = element_text(family="Helvetica", angle = 0, hjust=1, size=20),
+      plot.title = element_text(family="Helvetica", size=34, hjust = 0.5),
+      legend.text = element_text(family="Helvetica", size=20),
+      legend.title = element_text(family="Helvetica", size=28),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_rect(fill = "white", color = "black"))
     
     # Create a line plot for the change in frequency of alleles over time
     # Each line's color is a function of its effect size
+    if (p == 1) {
+      colors_palette <- "Reds"
+    } else {
+      colors_palette <- "Blues"
+    }
+    
     ggplot(freq.df, aes(x=gen, y=freq, group=id)) +
-      geom_line(aes(color=eff_size), size=0.7, show.legend=TRUE) +
-      scale_color_gradient(low="#FFDC5E", high="#BB0101", "Effect Size") +
-      labs(x="Generation", y="Allele Frequency")
+      geom_line(aes(color=eff_size), size=1, show.legend=TRUE) +
+      scale_color_distiller(palette=colors_palette, direction=1, "Effect Size") +
+      labs(x="Generation", y="Allele Frequency", title=paste0("Subpopulation ", p)) +
+      theme
     
     
     ggplot2::ggsave(filename = "allelefrequencies.pdf",

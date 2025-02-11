@@ -4,6 +4,22 @@ output: html_notebook
 author: Ted Monyak
 description: This notebook contains scripts for understanding the dynamics of adaptive walks.
 ---
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+
+rm(list = ls())
+
+# Set to false if running on Alpine
+runLocal = TRUE
+
+if (runLocal) {
+  opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
+} else {
+  opts_knit$set(root.dir = "/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+}
+```
+
 Imports
 ```{r}
 library(AlphaSimR)
@@ -20,17 +36,13 @@ library(tibble)
 library(tidyr)
 library(viridis)
 library(notly)
-rm(list = ls())
 
 set.seed(123)
 
 source("Functions/Fitness.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
-#source("Scripts/CreateFounderPop.R")
-
-# Set to false if running on Alpine
-runLocal = TRUE
+source("Scripts/CreateFounderPop.R")
 
 if (runLocal) {
   setwd("~/Documents/CSU/R/BreedingSims")
@@ -41,17 +53,6 @@ if (runLocal) {
 }
 
 if (!dir.exists(output_dir)) dir.create(output_dir)
-```
-
-
-```{r setup, include=FALSE, echo=FALSE}
-require("knitr")
-
-if (runLocal) {
-  opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
-} else {
-  opts_knit$set(root.dir = "/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
-}
 ```
 
 View a fitness landscape
@@ -105,9 +106,9 @@ fit_df <- data.frame(gen=1:n.gens,
 pop <- founderPop
 
 for(gen in 1:n.gens) {
-  fit_df$fitness[gen] <- mean(twoTraitFitFunc(gv(pop)))
-  fit_df$traitValA[gen] <- meanG(pop)[1]
-  fit_df$traitValB[gen] <- meanG(pop)[2]
+  fit_df$fitness[gen] <- calculateFitnessTwoTraitModified(meanP(pop)[1], meanP(pop)[2])
+  fit_df$traitValA[gen] <- meanP(pop)[1]
+  fit_df$traitValB[gen] <- meanP(pop)[2]
   meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
   selRat <- selectionRatio(meanFitness)
   pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=n.popSize*selRat, nCrosses=n.popSize)
@@ -124,7 +125,7 @@ fname <- file.path(save_dir, paste0("adaptivewalk_", plotType, ".html"))
 htmlwidgets::saveWidget(as_widget(pc), fname)
 
 plotType <- "SURFACE"
-ps <- overlayWalkOnLandscape(fit_df, type=plotType, calculateFitnessTwoTrait)
+ps <- overlayWalkOnLandscape(fit_df, type=plotType, calculateFitnessTwoTrait, popId=1)
 fname <- file.path(save_dir, paste0("adaptivewalk_", plotType, ".html"))
 htmlwidgets::saveWidget(as_widget(ps), fname)
 
@@ -134,7 +135,15 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
 ```{r}
 source("Scripts/GlobalParameters.R")
-source("Scripts/CreateFounderPop.R")
+n.var <- 0.05
+n.popSize <- 1000
+n.h2 <- 0.2
+n.qtlPerChr <- 2
+#source("Scripts/CreateFounderPop.R")
+#plotTraitArchitecture(founderPop)
+n.subPopSize <- 500
+n.gens <- 200
+n.selProp <- 0.1
 
 fit_df <- data.frame(gen=1:n.burnInGens,
                  fitness=numeric(n.burnInGens),

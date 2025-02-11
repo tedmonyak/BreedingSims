@@ -98,7 +98,7 @@ getEffectSize <- function(locus,
     pop1 <- editGenome(pop, ind=c(1:popSize), chr=chr, segSites=site, allele=1, simParam=SP)
     # The effect size is the absolute value of the difference in mean fitness values
     # between the populations that differ only at the allele in question
-    return (abs(mean(twoTraitFitFunc(gv(pop1))) - mean(twoTraitFitFunc(gv(pop0)))))
+    return (abs(mean(twoTraitFitFunc(pheno(pop1))) - mean(twoTraitFitFunc(pheno(pop0)))))
   }
 }
 
@@ -144,6 +144,18 @@ traitArchitecture <- function(pop, methodType="Additive") {
     eff_sizes <- na.omit(eff_sizes)
     return (eff_sizes)
   }
+}
+
+# This function returns a dataframe of the effect sizes of segregating QTL 
+# in the population, sorted in descending order of effect size,
+# with the columns: id, eff_size, and rank
+sortedEffectSizes <- function(pop, methodType="Additive") {
+  # Get the effect sizes and return in descending order
+  effSizes <- traitArchitecture(pop, methodType) %>%
+    arrange(desc(eff_size))
+  # Add a new column called rank which goes from 1 to the number of rows
+  effSizes$rank <- seq.int(nrow(effSizes))
+  return (effSizes)
 }
 
 # This function will return the additive effect sizes for the QTL for a given trait,

@@ -91,7 +91,8 @@ overlayWalkOnLandscape <- function(df,
                                    trait1Min=-1,
                                    trait1Max=1,
                                    trait2Min=-1,
-                                   trait2Max=1) {
+                                   trait2Max=1,
+                                   popId=1) {
   
   # Create a matrix of fitness values, with a small increment along the x and y axes.
   fitness_x = seq(trait1Min,trait1Max, by=(trait1Max-trait1Min)/40)
@@ -124,22 +125,26 @@ overlayWalkOnLandscape <- function(df,
         opacity = 1)
     return (fig)
   } else if (type == "SURFACE"){
+    f <- list(family="Arial", size=16)
     fig <- plot_ly() %>%
-      layout(scene = list(xaxis = list(title = "Trait 1"),
-                          yaxis = list(title = "Trait 2"),
-                          zaxis = list(title = "Fitness"),
-                          aspectmode='cube')) %>%
+      layout(
+        legend = list(title=list(text="Subpopulation", font=f)),
+        scene = list(xaxis = list(title = ""),
+                     yaxis = list(title = ""),
+                     zaxis = list(title = "Fitness"),
+                     aspectmode='cube'))
+    fig <- fig %>%
       add_trace(
         fig,
         df,
-        name = n.popSize,
+        name = popId,
         x = df$traitValA,
         y = df$traitValB,
         z = df$fitness,
         type = 'scatter3d',
         mode = 'lines',
         opacity = 1,
-        line = list(width = 10)
+        line = list(autocolorscale=FALSE, color="#CC0000", which=2, width = 10)
       ) %>%
       add_trace(
         fig,
@@ -148,8 +153,8 @@ overlayWalkOnLandscape <- function(df,
         z=fitness_z,
         type='surface',
         colorbar=list(title = "Fitness"),
-        colors = "PuBuGn",
-        opacity=0.9)
+        colors = viridis(n=10),
+        opacity=1.0)
     return (fig)
   } else {
     print("Type Not Supported")

@@ -8,8 +8,8 @@
 n.sims <- 200
 n.popResets <- 5
 n.gens <- 200
-n.selProp <- 0.5
-n.h2 <- 0.3
+n.selProp <- 0.1
+n.h2 <- 0.1
 n.margin <- 0
 addSnpChip <- FALSE
 saveQtlPlots <- FALSE 
@@ -18,7 +18,7 @@ saveAllelePlots <- TRUE
 saveFitnessPlots <- FALSE
 
 n.qtlPerChr <- 2
-n.subPopSize <- 50
+n.subPopSize <- 500
 
 if (saveFitnessPlots) {
   fig <- plot_ly()
@@ -28,7 +28,8 @@ if (saveFitnessPlots) {
 effSize.df <- data.frame(orderFixed=c(),
                          gen=c(),
                          fitness=c(),
-                         effectSize=c())
+                         effectSizeA=c(),
+                         effectSizeF=c())
 # Create a new population n.nPops times
 for (p in 1:n.popResets) {
   print(paste0("Pop Reset: ", p))
@@ -76,6 +77,7 @@ for (p in 1:n.popResets) {
       }
       # Keep track of the current population
       prevPop <- pop
+      prevGeno <- getUniqueQtl(prevPop)
       # Advance the population based on fitness
       pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
       # Get the qtl genotypes from the current and new populations, so we can compare them
@@ -97,11 +99,17 @@ for (p in 1:n.popResets) {
         if (loci[id, "fixed"] == TRUE) {
           # Increment the order counter after this generation
           inc <- TRUE
+          effectSizeF <- getEffectSize()
+          
           effSize.df <- rbind(effSize.df,
                               data.frame(orderFixed=c(idx),
                                          gen=c(gen),
                                          fitness=c(meanFitness),
-                                         effectSize=c(qtlEff.df[id,1])))
+                                         effectSizeA=c(qtlEff.df[id,1])),
+                                         effectSizeF=c(getEffectSize(locus=prevGeno[l],
+                                                                     id=id,
+                                                                     pop=prevPop,
+                                                                     methodType="Fitness")))
         }
       }
       # Check whether to increment the order counter and reset 'inc'
@@ -145,17 +153,17 @@ if (!dir.exists(save_dir)) dir.create(save_dir)
 write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quote=FALSE, sep=":\t")
 write.table(effSize.df, file.path(save_dir, "effSize.csv"), col.names=TRUE, quote=FALSE, sep=",")
 
-order.df <- df %>%
+order.df <- effSize.df %>%
   group_by(orderFixed) %>%
   #filter(!(abs(effectSize - median(effectSize)) > 2*sd(effectSize))) %>%
-  summarize(meanEffectSize = mean(effectSize), n=n()) %>%
-  filter(n > N)
+  summarize(meanEffectSize = mean(effectSizeA), n=n()) %>%
+  filter(n > 100)
 
 gO <- ggplot(order.df, aes(x=orderFixed, y=meanEffectSize)) +
   geom_point() +
   theme +
   labs(title="", x="Order Fixed", y="Mean Effect Size") +
-  geom_smooth(formula = y ~ x, method="loess")
+  geom_smooth(formula = y ~ x, method="loess", color="black")
 
 ggplot2::ggsave(filename = paste0("average_effect_size_order.jpg"),
                 path=save_dir,

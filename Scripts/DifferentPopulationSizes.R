@@ -4,15 +4,15 @@
 
 # Different starting population sizes
 subPopSizes <- c(50,500)
-selProps <- c(0.5,0.5)
-n.h2 <- 0.3
-n.var <- 0.1
+n.selProp <- 0.1
+n.h2 <- 0.2
+n.var <- 0.05
 n.qtlPerChr <- 2
 n.gens <- 50
 
 # Don't use a SNP chip for these simulations
 addSnpChip <- FALSE
-source("Scripts/CreateFounderPop.R")
+#source("Scripts/CreateFounderPop.R")
 
 f <- list(family="Arial", size=16)
 
@@ -31,8 +31,6 @@ for (gen in 1:n.burnInGens) {
 # Iterate through each population size
 for (p in 1:length(subPopSizes)) {
   n.subPopSize <- subPopSizes[p]
-  n.selProp <- selProps[p]
-  print(n.subPopSize)
   fit_df <- data.frame(gen=1:n.gens,
                        fitness=numeric(n.gens),
                        traitValA=numeric(n.gens),

@@ -69,14 +69,15 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
       length(phenoRilT2) <- n
 
       theme <- theme(
-        plot.title = element_text(family="Helvetica", size=16, hjust = 0.5),
-        axis.title.x = element_text(family="Helvetica", size=14),
-        axis.title.y = element_text(family="Helvetica", size=14),
-        axis.text.x = element_text(angle = 0, hjust=1, size=12),
-        axis.text.y = element_text(angle = 0, hjust=1, size=12),
-        legend.text = element_text(family="Helvetica", size=12),
-        legend.title = element_text(family="Helvetica", size=12),
+        plot.title = element_text(family="Helvetica", size=22, hjust = 0.5),
+        axis.title.x = element_text(family="Helvetica", size=20, vjust=-0.5),
+        axis.title.y = element_text(family="Helvetica", size=20),
+        axis.text.x = element_text(angle = 0, hjust=1, size=16),
+        axis.text.y = element_text(angle = 0, hjust=1, size=16),
+        legend.text = element_text(family="Helvetica", size=18),
+        legend.title = element_text(family="Helvetica", size=18),
         legend.key = element_rect(linewidth=0.05),
+        legend.spacing.y = unit(20, 'pt'),
         plot.caption = element_text(family="Helvetica", size=10, hjust = 0.5),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -84,25 +85,29 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
         aspect.ratio = 1)
       
       trait1.df <- as.data.frame(cbind(phenoAT1,phenoBT1,phenoRilT1))
-      colnames(trait1.df) <- c("Subpopulation A", "Subpopulation B", "RIL")
+      colnames(trait1.df) <- c("Subpopulation 1", "Subpopulation 2", "RIL Family")
       trait1.df <- trait1.df %>%
-        pivot_longer(c("Subpopulation A", "Subpopulation B", "RIL"), names_to="Population", values_to="pheno") %>%
+        pivot_longer(c("Subpopulation 1", "Subpopulation 2", "RIL Family"), names_to="Population", values_to="pheno") %>%
         drop_na()
       t1 <- ggplot(trait1.df, aes(pheno, fill=Population, color=Population)) +
-        scale_color_manual(values=c("purple", "red", "blue")) +
-        geom_density(alpha=0.1) +
-        labs(title="Trait A", x="Trait Value", y="Density") +
+        scale_color_manual(values=c("#674ED7", "#CC0000", "#3C78D8")) +
+        geom_density(size=1, alpha=0.1) +
+        xlim(-1,1) +
+        ylim(0,5) +
+        labs(title="Trait A", x="Phenotype", y="Density") +
         theme
       
       trait2.df <- as.data.frame(cbind(phenoAT2,phenoBT2,phenoRilT2))
-      colnames(trait2.df) <- c("Subpopulation A", "Subpopulation B", "RIL")
+      colnames(trait2.df) <- c("Subpopulation 1", "Subpopulation 2", "RIL Family")
       trait2.df <- trait2.df %>%
-        pivot_longer(c("Subpopulation A", "Subpopulation B", "RIL"), names_to="Population", values_to="pheno") %>%
+        pivot_longer(c("Subpopulation 1", "Subpopulation 2", "RIL Family"), names_to="Population", values_to="pheno") %>%
         drop_na()
       t2 <- ggplot(trait2.df, aes(pheno, fill=Population, color=Population)) +
-        scale_color_manual(values=c("purple", "red", "blue")) +
-        geom_density(alpha=0.1) +
-        labs(title="Trait B", x="Trait Value", y="Density") +
+        scale_color_manual(values=c("#674ED7", "#CC0000", "#3C78D8")) +
+        geom_density(size=1, alpha=0.1) +
+        xlim(-1,1) +
+        ylim(0,5) +
+        labs(title="Trait B", x="Phenotype", y="Density") +
         theme
       
       (t1|t2) + plot_layout(guides='collect', axes='collect')

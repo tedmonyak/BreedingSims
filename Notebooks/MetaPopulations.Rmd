@@ -7,6 +7,22 @@ description: This notebook contains scripts for developing breeding metapopulati
 creating mapping populations, and running linkage mapping and GWAS
 ---
 
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+
+rm(list = ls())
+
+# Set to false if running on Alpine
+runLocal = TRUE
+
+if (runLocal) {
+  opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
+} else {
+  opts_knit$set(root.dir = "/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
+}
+```
+
 Imports
 ```{r}
 library(AlphaSimR)
@@ -27,12 +43,8 @@ library(snow)
 library(tibble)
 library(tidyr)
 library(viridis)
-rm(list = ls())
 
 set.seed(123)
-
-# Set to false if running on Alpine
-runLocal = TRUE
 
 if (runLocal) {
   setwd("~/Documents/CSU/R/BreedingSims")
@@ -51,16 +63,6 @@ source("Functions/PopGen.R")
 source("Functions/QtlMapping.R")
 source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
-```
-
-```{r setup, include=FALSE, echo=FALSE}
-require("knitr")
-
-if (runLocal) {
-  opts_knit$set(root.dir = "~/Documents/CSU/R/BreedingSims")
-} else {
-  opts_knit$set(root.dir = "/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
-}
 ```
 
 Show that RILS generated from trans-elite crosses of independently adapting populations have a wider distribution of trait values than the original elite populations.
@@ -182,19 +184,15 @@ if (!dir.exists(save_dir)) dir.create(save_dir)
 save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 dir.create(save_dir)
 
-#source("Scripts/GlobalParameters.R")
-
-#n.qtlPerChr <- 2
-n.popSize <- 10000
-n.h2 <- 0.1
-n.qtlPerChr <- 1
-n.var <- 0.1
-source("Scripts/CreateFounderPop.R")
+source("Scripts/GlobalParameters.R")
+n.qtlPerChr <- 2
+n.h2Breeding <- 0.6
+n.subPopSize <- 500
+#source("Scripts/CreateFounderPop.R")
 eff_size.df <- data.frame(orderFixed=c(),
                           effectSize=c())
-n.selProp <- 0.1
-n.subPopSize <- 5000
-n.gens <- 100
+saveAllelePlots <- TRUE
+saveQtlPlots <- TRUE
 source("Scripts/CreateIndependentPops.R")
 
 # Increase heritability for the breeding portion of the simuation
