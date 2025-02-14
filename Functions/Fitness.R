@@ -61,6 +61,7 @@ selectSubPop <- function(x, idx, randVec) {
   as.numeric(lapply(randVec, idx, FUN=setequal))
 }
 
+
 # Set theme elements
 theme <- theme(plot.background = ggplot2::element_blank(),
                panel.background = ggplot2::element_blank(),
@@ -160,7 +161,6 @@ overlayWalkOnLandscape <- function(df,
     print("Type Not Supported")
   }
 }
-
 
 # Plot a population on a a 3D fitness surface (only works for populations with 2 traits)
 # pop: The population to plot

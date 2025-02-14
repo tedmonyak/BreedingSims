@@ -43,12 +43,12 @@ getSigQtl <- function(RIL, parentA, parentB, save_dir) {
                        alpha=0.05,
                        controlAcrossCol=TRUE)
   if (saveQtlPlots) {
-    fname <- file.path(save_dir, "linkagemap2.pdf")
+    fname <- file.path(save_dir, "linkagemap.pdf")
     pdf(fname, width=11, height=4)
     par(mar=c(5,5,5,1))
     cols <- c("forestgreen", "gold2")
-    plot(out.hk, type="n", ylim=c(0,30),#ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))),
-         main="Intra-subpopulation", xlab = "Position", ylab= "LOD Score",
+    plot(out.hk, type="n", ylim=c(0,max(as.matrix(out.hk[,-c(1:2)]))),
+         main="", xlab = "Position", ylab= "LOD Score",
          cex.main=2, cex.lab=1.5, cex.axis=1.5)
     for (i in 1:length(phes)) plot(out.hk, add=T, lodcolumn = i, col = cols[i], lwd=3)
     legend(900, 25, legend=c("Trait A", "Trait B"), fill=cols)

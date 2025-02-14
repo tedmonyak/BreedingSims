@@ -135,15 +135,7 @@ write.table(getParams(), file.path(save_dir, "params.txt"), col.names=FALSE, quo
 This block will simulate one base population, from which two sub-populations are selected, and undergo purifying selection independently.
 ```{r}
 source("Scripts/GlobalParameters.R")
-n.var <- 0.05
-n.popSize <- 1000
-n.h2 <- 0.2
-n.qtlPerChr <- 2
-#source("Scripts/CreateFounderPop.R")
-#plotTraitArchitecture(founderPop)
-n.subPopSize <- 500
-n.gens <- 200
-n.selProp <- 0.1
+source("Scripts/CreateFounderPop.R")
 
 fit_df <- data.frame(gen=1:n.burnInGens,
                  fitness=numeric(n.burnInGens),

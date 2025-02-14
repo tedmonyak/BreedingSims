@@ -185,10 +185,7 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 dir.create(save_dir)
 
 source("Scripts/GlobalParameters.R")
-n.qtlPerChr <- 2
-n.h2Breeding <- 0.6
-n.subPopSize <- 500
-#source("Scripts/CreateFounderPop.R")
+source("Scripts/CreateFounderPop.R")
 eff_size.df <- data.frame(orderFixed=c(),
                           effectSize=c())
 saveAllelePlots <- TRUE

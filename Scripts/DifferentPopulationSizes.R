@@ -2,6 +2,9 @@
 #Author: Ted Monyak
 #Description: Simulate several adaptive walks with different population sizes
 
+setwd("~/Documents/CSU/R/BreedingSims")
+output_dir <- file.path(getwd(), "Output")
+
 # Different starting population sizes
 subPopSizes <- c(50,500)
 n.selProp <- 0.1
@@ -12,7 +15,8 @@ n.gens <- 50
 
 # Don't use a SNP chip for these simulations
 addSnpChip <- FALSE
-#source("Scripts/CreateFounderPop.R")
+source("Scripts/GlobalParameters.R")
+source("Scripts/CreateFounderPop.R")
 
 f <- list(family="Arial", size=16)
 

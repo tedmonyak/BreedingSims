@@ -4,6 +4,9 @@
 # are randomly selected. Those subpopulations then follow an adaptive walk.
 # The walks are then plotted on a 2d contour graph.
 
+setwd("~/Documents/CSU/R/BreedingSims")
+output_dir <- file.path(getwd(), "Output")
+
 source("Scripts/GlobalParameters.R")
 source("Scripts/CreateFounderPop.R")
 

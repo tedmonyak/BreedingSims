@@ -5,20 +5,10 @@
 # fixed along the adaptive walk, saving the order in which the alleles are fixed
 # n.nPops populations are created, and each one undergoes n.sims unique adaptive walks
 
-n.sims <- 200
-n.popResets <- 5
-n.gens <- 200
-n.selProp <- 0.1
-n.h2 <- 0.1
-n.margin <- 0
-addSnpChip <- FALSE
-saveQtlPlots <- FALSE 
-saveTraitPlots <- FALSE
-saveAllelePlots <- TRUE
-saveFitnessPlots <- FALSE
+setwd("~/Documents/CSU/R/BreedingSims")
 
-n.qtlPerChr <- 2
-n.subPopSize <- 500
+source("Scripts/GlobalParameters.R")
+saveAllelePlots <- TRUE
 
 if (saveFitnessPlots) {
   fig <- plot_ly()

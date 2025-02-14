@@ -64,14 +64,14 @@ saveFitnessPlots <- FALSE
 saveEffectSizes <- TRUE
 randParams <- FALSE
 
-#n.h2 <- 0.2
 n.selProp <- 0.1
 n.gens <- 200
 n.var <- 0.05
 
-qtl_vec <- c(2)
-pop_vec = c(500)
-h2_vec = c(0.1)
+# All the parameter combinations to iterate through
+qtl_vec <- c(2,20)
+pop_vec = c(50,500)
+h2_vec = c(0.2)
 
 for (hx in 1:length(h2_vec)) {
   n.h2 <- h2_vec[hx]
@@ -204,15 +204,13 @@ for (hx in 1:length(h2_vec)) {
       ggplot2::ggsave(filename = fname,
                       device = "pdf")
 
+      # Save a plot of the average effect sizes, sorted by effect size
       if (saveEffectSizes) {
         avgEffectSize.df <- effectSize.df %>%
           group_by(rank) %>%
           summarize(meanEffectSize = mean(eff_size))
         
-        #model <- nls(formula=meanEffectSize~ a * b^rank,
-        #             data=effectSize.df,
-        #             start=list(a=1,b=1))
-        
+        # Create a dot plot and regress an exponential decay curve of y = a*b^x
         ggplot(avgEffectSize.df, aes(x=rank, y=meanEffectSize)) +
           geom_point() +
           theme +

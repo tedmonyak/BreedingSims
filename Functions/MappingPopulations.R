@@ -149,7 +149,7 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
 # Returns: an F8 population that has undergone selection and inbreeding
 makeElite <- function(pop) {
   purifiedLandraces <- selectInd(pop, trait=twoTraitFitFunc, nInd=n.landraces)
-  # Purify each landrace
+  # Purify each landrace by selfing it repeatedly
   for (f in 1:10) {
     purifiedLandraces <- self(purifiedLandraces)
   }
