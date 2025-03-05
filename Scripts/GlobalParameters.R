@@ -3,18 +3,18 @@
 # Description: This file contains default parameters for use in all breeding simulations
 
 # POPULATION
-n.popSize = 1000 # Num. individuals in the founder population
-n.subPopSize = 500 # Num individuals in the independent sub-populations
-n.ne = n.popSize # Effective population size
-n.segSites = 1000 # Initial # segregating alleles per chromosome in the population
-n.markers = 1000 # Num. loci per chromosome to include on the SNP chip 
+n.popSize <- 1000 # Num. individuals in the founder population
+n.subPopSize <- 500 # Num individuals in the independent sub-populations
+n.ne <- n.popSize # Effective population size
+n.segSites <- 1000 # Initial # segregating alleles per chromosome in the population
+n.markers <- 1000 # Num. loci per chromosome to include on the SNP chip 
 n.chr <- 10 # Num. chromosomes (sorghum has 10)
 addSnpChip <- TRUE # If true, will add a SNP chip with n.markers markers
 basicPop <- TRUE # If true, uses runMacs. If false, uses runMacs2 with more custom parameters
 randParams <- FALSE # If true, uses random parameters for heritability and initial genetic variance
 
 # TRAITS
-n.qtlPerChr = 2 # Number of qtl per chromosome, per trait
+n.qtlPerChr <- 2 # Number of qtl per chromosome, per trait
 n.h2 <- 0.1 # Narrow-sense heritability for each acquired trait for landrace adaptation
 n.h2Breeding <- 0.6 # Narrow-sense heriability for each acquired trait for breeding adaptation
 n.initTraitVal <- 1 # Starting value for each of the two traits
@@ -22,6 +22,14 @@ n.var <- 0.05 # Initial variance for each trait. This is used as the 'rate' para
 n.shape <- 1 # Initial shape for the gamma distribution for each trait
 n.allele <- 2 # This is the allele for which to track frequency over time
 normalDist <- TRUE # if true, uses a normal distribution for trait values. If false, uses a gamma distribution
+
+# YIELD
+n.yieldQtlPerChr <- 500 # No. QTL per chromosome for yield
+n.yieldVar <- 0.1 # Initial variance for yield
+n.yieldH2 <- 0.1 # h2 for yield
+n.initYieldVal <- 0 # Starting mean value for yield
+n.yieldCor <- 0.1 # Correlation between yield and fitness
+n.yieldProp <- 0.1 # Proportion to use for the weighted average calculation of the selection index
 
 # ADAPTIVE WALKS
 n.margin <- 0 # Populations will terminate their adaptive walks once they reach this fitness value
@@ -105,7 +113,13 @@ getParams <- function() {
     F5=n.F5,
     F6=n.F6,
     F7=n.F7,
-    F8=n.F8
+    F8=n.F8,
+    yieldQtlPerChr=n.yieldQtlPerChr,
+    yieldVar=n.yieldVar,
+    yieldH2=n.yieldH2,
+    initYieldVal=n.initYieldVal,
+    yieldCor=n.yieldCor,
+    yieldProp=n.yieldProp
   )
   return (t(n.df))
 }

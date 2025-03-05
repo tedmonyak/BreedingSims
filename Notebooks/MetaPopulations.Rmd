@@ -7,7 +7,6 @@ description: This notebook contains scripts for developing breeding metapopulati
 creating mapping populations, and running linkage mapping and GWAS
 ---
 
-
 ```{r setup, include=FALSE, echo=FALSE}
 require("knitr")
 
@@ -203,6 +202,35 @@ parentA <- res[1]
 parentB <- res[2]
 
 print(getSigQtl(RIL, parentA, parentB, save_dir))
+```
+
+```{r}
+save_dir <- file.path(output_dir, "Yield")
+if (!dir.exists(save_dir)) dir.create(save_dir)
+save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
+dir.create(save_dir)
+
+source("Scripts/GlobalParameters.R")
+source("Scripts/CreateFounderPop.R")
+saveFitnessPlots <- TRUE
+n.yieldCor <- -1
+n.yieldProp <- 0.1
+
+w <- twoTraitFitFunc(pheno(founderPop[1]))
+pheno(founderPop[1])[3]
+
+w <- -0.08
+y <- -0.02
+
+w*y * n.yieldCor * -1
+
+source("Scripts/CreateIndependentPops.R")
+cor(pheno(pop), pheno(pop))
+
+twoTraitFitFunc(pheno(pop[1]))
+threeTraitFitFunc(pheno(pop[1]))
+pheno(pop[1])
+meanP(pop)
 ```
 
 Add effect sizes to LOD plots (work-in-progress)

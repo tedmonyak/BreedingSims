@@ -17,10 +17,40 @@ twoTraitFitFunc <- function(x) {
   return (res)
 }
 
+# Calculates the fitness with a constant slope
+# Renders in 3d space as a cone
+# w = -sqrt(x^2 + y^2)
+constantSlopeFitFunc <- function(x,y) {
+  res <- -sqrt(x^2 + y^2)
+  return (res)
+}
+
+# Calculates fitness as a weighted average between fitness of the two acquired traits
+# and yield
+# w = -(x^2) + -(y^2)
+# Return: w*(1-yieldProp) + yield*yieldProp
+threeTraitFitFunc <- function(x) {
+  w <- -((x[,1])^2) - ((x[,2])^2)
+
+  # Transform yield so that it has a correlation with fitness of n.yieldCor
+  yield <- w * x[,3] * n.yieldCor
+  
+  # Return a weighted average of fitness and yield
+  return (w*(1-n.yieldProp) + yield*n.yieldProp)
+}
+
 # Calculates fitness based on an optimum value of zero for each trait
 # w = -(x^2) + -(y^2)
 calculateFitnessTwoTrait <- function(x,y) {
   res <- -((x)^2) - ((y)^2)
+  return (res)
+}
+
+# Calculates the fitness with a constant slope
+# Renders in 3d space as a cone
+# w = -sqrt(x^2 + y^2)
+calculateFitnessConstantSlope <- function(x,y) {
+  res <- -sqrt(x^2 + y^2)
   return (res)
 }
 
@@ -243,10 +273,10 @@ plot2DFitness <- function(pop, fitFunc=calculateFitnessTwoTrait) {
 # colors = "PuBuGn"
 # colors = colorRampPalette(c("blue", "orange"))(15)
 # colors = magma(50, alpha = 1, begin = 0, end = 1, direction = 1) (viridis, plasma, magma, inferno)
-plotFitnessLandscape <- function() {
+plotFitnessLandscape <- function(fitFunc=calculateFitnessTwoTrait) {
   fitness_x = seq(-1,1, by=0.05)
   fitness_y = seq(-1,1, by=0.05)
-  fitness_z = outer(fitness_x,fitness_y,calculateFitnessTwoTrait)
+  fitness_z = outer(fitness_x,fitness_y,fitFunc)
   
   p <- plot_ly(x=fitness_x,
                y=fitness_y,

@@ -14,12 +14,10 @@ hetLocus <- function(locus) {
 # Returns: a dataframe of the QTL (where columns are the QTL and rows are the individuals)
 getUniqueQtl <- function(pop) {
   # Get the qtl from trait 1
-  qtlGeno <- pullQtlGeno(pop,1)
-  # Get the qtl from all other traits
+  qtlGeno <- cbind(pullQtlGeno(pop,1))
+  # Get the qtl from the second acquired trait, but not yield
   if (pop@nTraits > 1) {
-    for (t in 2:pop@nTraits) {
-      qtlGeno <- cbind(qtlGeno, pullQtlGeno(pop, trait=t))
-    }
+    qtlGeno <- cbind(qtlGeno, pullQtlGeno(pop, 2))
   }
   # Remove duplicate QTL
   qtlGeno <- qtlGeno[, !duplicated(colnames(qtlGeno))]

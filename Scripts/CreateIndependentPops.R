@@ -68,7 +68,7 @@ for (p in 1:length(pops)) {
                            fitness=meanFitness,
                            traitValA=meanP(pop)[1],
                            traitValB=meanP(pop)[2])
-      pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
+      pop <- selectCross(pop, trait=threeTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
       if (saveAllelePlots) {
         alleleFreq <- data.frame(matrix(0, nrow=1, ncol=length(qtl)))
         colnames(alleleFreq) <- colnames(qtlGeno)

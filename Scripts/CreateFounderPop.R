@@ -41,6 +41,7 @@ if (normalDist) {
   } else {
     SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
     SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
+    SP$addTraitA(mean=n.initYieldVal, var=n.yieldVar, nQtlPerChr=n.yieldQtlPerChr)
   }
 } else {
   SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr, gamma=TRUE, shape=n.shape)
@@ -57,7 +58,7 @@ if (randParams) {
   n.h2 <- runif(n=1,min=0,max=0.5)
 }
 # Set heritability for each of the traits
-SP$setVarE(h2=c(n.h2, n.h2))
+SP$setVarE(h2=c(n.h2, n.h2, n.yieldH2))
 
 
 # Add a SNP chip with n.markers*n.chr markers
