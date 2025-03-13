@@ -20,8 +20,8 @@ twoTraitFitFunc <- function(x) {
 # Calculates the fitness with a constant slope
 # Renders in 3d space as a cone
 # w = -sqrt(x^2 + y^2)
-constantSlopeFitFunc <- function(x,y) {
-  res <- -sqrt(x^2 + y^2)
+constantSlopeFitFunc <- function(x) {
+  res <- -sqrt((x[,1])^2 + (x[,2])^2)
   return (res)
 }
 
@@ -29,14 +29,14 @@ constantSlopeFitFunc <- function(x,y) {
 # and yield
 # w = -(x^2) + -(y^2)
 # Return: w*(1-yieldProp) + yield*yieldProp
-threeTraitFitFunc <- function(x) {
+threeTraitFitFunc <- function(x, yieldProp=n.yieldProp) {
   w <- -((x[,1])^2) - ((x[,2])^2)
 
-  # Transform yield so that it has a correlation with fitness of n.yieldCor
-  yield <- w * x[,3] * n.yieldCor
+  # Determine yieldPotential so that it is negatively penalized by a lower fitness (as determined by traits A and B)
+  yieldPotential <- (1-abs(w)) * x[,3]
   
   # Return a weighted average of fitness and yield
-  return (w*(1-n.yieldProp) + yield*n.yieldProp)
+  return (w*(1-yieldProp) + yieldPotential*yieldProp)
 }
 
 # Calculates fitness based on an optimum value of zero for each trait
@@ -70,6 +70,10 @@ calculateFitnessTwoTraitModified <- function(x,y) {
 selectionRatio <- function(w) {
   # If at fitness optimum, return n.selProp
   if (w == 0) {
+    return (n.selProp)
+  }
+  # If not using a geometric decay
+  if (n.r == 1) {
     return (n.selProp)
   }
   # Based on the simulation parameters, this is the starting fitness value

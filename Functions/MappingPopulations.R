@@ -12,9 +12,25 @@
 # Returns: a population where the first two individuals are parentA and parentB,
 # and the rest is the RIL
 createRIL <- function(popA, popB, save_dir, inter=TRUE) {
+  print(paste0("Landrace variance: ", varG(popA)[3,3]))
+  print(paste0("Landrace yield: ", meanP(popA)[3]))
   # Develop elite lines
-  popA <- makeElite(popA)
-  popB <- makeElite(popB)
+  popA <- makePurelines(popA)
+  popB <- makePurelines(popB)
+
+  #popA <- makeElite(popA)
+  #popB <- makeElite(popB)
+  
+  print(paste0("Pureline variance: ", varG(popA)[3,3]))
+  print(paste0("Pureline yield: ", meanP(popA)[3]))
+  
+  # Boost yield potential
+  popA <- improveVarieties(popA)
+  popB <- improveVarieties(popB)
+
+  print(paste0("Improved variance: ", varG(popA)[3,3]))
+  print(paste0("Improved yield: ", meanP(popA)[3]))
+
   # Select 2 random individuals from popA
   aIdx <- sample.int(nInd(popA),2)
   # parentA always comes from popA
@@ -55,18 +71,24 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
       # to allow for cbind()
       phenoAT1 <- pheno(popA)[,1]
       phenoAT2 <- pheno(popA)[,2]
+      phenoAT3 <- pheno(popA)[,3]
       length(phenoAT1) <- n
       length(phenoAT2) <- n
+      length(phenoAT3) <- n
       
       phenoBT1 <- pheno(popB)[,1]
       phenoBT2 <- pheno(popB)[,2]
+      phenoBT3 <- pheno(popB)[,3]
       length(phenoBT1) <- n
       length(phenoBT2) <- n
+      length(phenoBT3) <- n
       
       phenoRilT1 <- pheno(RIL)[,1]
       phenoRilT2 <- pheno(RIL)[,2]
+      phenoRilT3 <- pheno(RIL)[,3]
       length(phenoRilT1) <- n
       length(phenoRilT2) <- n
+      length(phenoRilT3) <- n
 
       theme <- theme(
         plot.title = element_text(family="Helvetica", size=22, hjust = 0.5),
@@ -116,6 +138,23 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
                       device = "pdf",
                       width=15,
                       height=7)
+
+      trait3.df <- as.data.frame(cbind(phenoAT3,phenoBT3,phenoRilT3))
+      colnames(trait3.df) <- c("Subpopulation 1", "Subpopulation 2", "RIL Family")
+      trait3.df <- trait3.df %>%
+        pivot_longer(c("Subpopulation 1", "Subpopulation 2", "RIL Family"), names_to="Population", values_to="pheno") %>%
+        drop_na()
+      ggplot(trait3.df, aes(pheno, fill=Population, color=Population)) +
+        scale_color_manual(values=c("#674ED7", "#CC0000", "#3C78D8")) +
+        geom_density(size=1, alpha=0.1) +
+        labs(title="Yield Potential", x="Phenotype", y="Density") +
+        theme
+      ggplot2::ggsave(filename = "yield_transgressive_segregation.pdf",
+                      path=save_dir,
+                      device = "pdf",
+                      width=15,
+                      height=7)
+      
       (plotTraitArchitecture(popA, "Additive", "popA") | plotTraitArchitecture(popB, "Additive", "popB"))
       ggplot2::ggsave(filename = "popA_popB_traitarchitecture.pdf",
                       path=save_dir,
@@ -143,6 +182,17 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
   return (c(parentA, parentB, RIL))
 }
 
+makePurelines <- function(landrace) {
+  n.purelines <- 20
+  purelines <- selectInd(landrace, trait=fitFunc, nInd=n.purelines)
+  # Purify each landrace by selfing it repeatedly
+  for (f in 1:10) {
+    purelines <- self(purelines, nProgeny=10)
+    purelines <- selectInd(purelines, nInd=n.purelines)
+  }
+  return (purelines)
+}
+
 # Simulate a population going through a breeding program, under purifying selection
 # First, the top landrace individuals are purified
 # pop: the landrace
@@ -157,20 +207,54 @@ makeElite <- function(pop) {
   F1 <- randCross(purifiedLandraces, nCrosses=(n.landraces^2), simParam=SP)
   # Create enough F2s to select n.F2 to advance
   F2 <- self(F1, nProgeny=ceiling(n.F2/nInd(F1)))
-  F2 <- selectInd(F2, trait=twoTraitFitFunc, nInd=n.F2)
+  F2 <- selectInd(F2, trait=fitFunc, nInd=n.F2)
   F3 <- self(F2)
-  F3 <- selectInd(F3, trait=twoTraitFitFunc, nInd=n.F3)
+  F3 <- selectInd(F3, trait=fitFunc, nInd=n.F3)
   F4 <- self(F3)
-  F4 <- selectInd(F4, trait=twoTraitFitFunc, nInd=n.F4)
+  F4 <- selectInd(F4, trait=fitFunc, nInd=n.F4)
   F5 <- self(F4)
-  F5 <- selectInd(F5, trait=twoTraitFitFunc, nInd=n.F5)
+  F5 <- selectInd(F5, trait=fitFunc, nInd=n.F5)
   F6 <- self(F5)
-  F6 <- selectInd(F6, trait=twoTraitFitFunc, nInd=n.F6)
+  F6 <- selectInd(F6, trait=fitFunc, nInd=n.F6)
   F7 <- self(F6)
-  F7 <- selectInd(F7, trait=twoTraitFitFunc, nInd=n.F7)
+  F7 <- selectInd(F7, trait=fitFunc, nInd=n.F7)
   F8 <- self(F7)
-  F8 <- selectInd(F8, trait=twoTraitFitFunc, nInd=n.F8)
+  F8 <- selectInd(F8, trait=fitFunc, nInd=n.F8)
   return (F8)
+}
+
+improveVarieties <- function(purelines) {
+  n.P <- 8
+  n.F1 <- 128
+  n.F2 <- 1000
+  n.F3 <- 500
+  n.F4 <- 250
+  n.F5 <- 100
+  n.F6 <- 50
+  n.F7 <- 25
+  n.F8 <- 5
+  P <- selectInd(purelines, trait=fitFunc, nInd=n.P)
+  F1 <- randCross(P, nCrosses=64, nProgeny=ceiling(n.F1/n.P))
+  # Create enough F2s to select n.F2 to advance
+  F2 <- self(F1, nProgeny=ceiling(n.F2/n.F1))
+  F3 <- self(F2, nProgeny=ceiling(n.F3/n.F2))
+  F3 <- selectInd(F3, trait=fitFunc, nInd=n.F4, yieldProp=0.8)
+  F4 <- self(F3)
+  F4 <- selectInd(F4, trait=fitFunc, nInd=n.F5, yieldProp=0.8)
+  F5 <- self(F4)
+  F5 <- selectInd(F5, trait=fitFunc, nInd=n.F6, yieldProp=0.8)
+  F6 <- self(F5)
+  F6 <- selectInd(F6, trait=fitFunc, nInd=n.F7, yieldProp=0.8)
+  F7 <- self(F6)
+  F7 <- selectInd(F7, trait=fitFunc, nInd=n.F8, yieldProp=0.8)
+  F8 <- self(F7)
+  return (F8)
+  #n.breedingInd <- 200
+  #for (f in 1:10) {
+  #  pop <- selectCross(pop, trait=fitFunc, nInd=n.breedingInd*n.selProp, nCrosses=n.breedingInd, yieldProp=0.1)
+  #}
+  #pop <- selectInd(pop, trait=fitFunc, nInd=4)
+  #return (pop)
 }
 
 # Creates a nested association mapping (NAM) population, to be used for GWAS

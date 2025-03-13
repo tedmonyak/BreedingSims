@@ -53,14 +53,14 @@ source("Functions/TraitArchitecture.R")
 source("Scripts/GlobalParameters.R")
 
 # Number of founder populations to simulate
-n.popResets <- 4
+n.popResets <- 1
 # Number of adaptive walk simulations per pair of subpopulations
-n.sims <- 25
+n.sims <- 10
 
-saveQtlPlots <- FALSE
-saveTraitPlots <- FALSE
-saveAllelePlots <- FALSE
-saveFitnessPlots <- FALSE
+saveQtlPlots <- TRUE
+saveTraitPlots <- TRUE
+saveAllelePlots <- TRUE
+saveFitnessPlots <- TRUE
 saveEffectSizes <- TRUE
 randParams <- FALSE
 
@@ -69,8 +69,8 @@ n.gens <- 200
 n.var <- 0.05
 
 # All the parameter combinations to iterate through
-qtl_vec <- c(2,20)
-pop_vec = c(50,500)
+qtl_vec <- c(20)
+pop_vec = c(500)
 h2_vec = c(0.2)
 
 for (hx in 1:length(h2_vec)) {
@@ -121,11 +121,11 @@ for (hx in 1:length(h2_vec)) {
           save_dir <- file.path(pop_dir, paste0("Sim", s))
           dir.create(save_dir)
           # Landrace heritability
-          SP$setVarE(h2=c(n.h2, n.h2))
+          SP$setVarE(h2=c(n.h2, n.h2, n.yieldH2))
           source("Scripts/CreateIndependentPops.R")
           fst <- FST(pops)
           # Breeding heritability
-          SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding))
+          SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding, n.yieldH2Breeding))
           qtl_dir <- file.path(save_dir, "Inter")
           dir.create(qtl_dir)
           # Create a biparental RIL population by sampling one individual from each subpopulation

@@ -57,28 +57,7 @@ if (!dir.exists(output_dir)) dir.create(output_dir)
 
 View a fitness landscape
 ```{r}
-
-
-plotFitnessLandscape <- function() {
-  fitness_x = seq(-1,1, by=0.05)
-  fitness_y = seq(-1,1, by=0.05)
-  fitness_z = outer(fitness_x,fitness_y,calculateFitnessTwoTrait)
-  
-  p <- plot_ly(x=fitness_x,
-               y=fitness_y,
-               z=fitness_z,
-               type='surface',
-               colors = "PuBuGn",
-               opacity=1) %>%
-    layout(scene = list(xaxis = list(title = "Trait A"),
-                        yaxis = list(title = "Trait B"),
-                        zaxis = list(title = "Fitness"),
-                        aspectmode='cube'))
-  p 
-}
-
-p <- plotFitnessLandscape()
-
+p <- plotFitnessLandscape(calculateFitnessConstantSlope)
 save_dir <- file.path(output_dir, "FitnessFunctions")
 if (!dir.exists(save_dir)) dir.create(save_dir)
 save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))

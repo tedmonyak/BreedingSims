@@ -8,6 +8,7 @@
 
 # founderPop is created in CreateFounderPop.R
 pop <- founderPop
+
 # Check if # independent pops * # individuals per pop does not exceed the
 # number of individuals in the founder pop
 if (n.nPops*n.subPopSize > nInd(pop)) {
@@ -17,7 +18,7 @@ if (n.nPops*n.subPopSize > nInd(pop)) {
 
 # Burn-in
 for (gen in 1:n.burnInGens) {
-  pop <- selectCross(pop, trait=twoTraitFitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
+  pop <- selectCross(pop, trait=fitFunc, nInd=nInd(pop)*n.burnInSelProp, nCrosses=nInd(pop))
 }
 
 # Create a random vector of size n.pops, with a random order of sub-population ids
@@ -50,7 +51,7 @@ for (p in 1:length(pops)) {
   qtl <- colnames(getUniqueQtl(pop))
 
   # Create a dataframe of all zeros where the columns are the QTL ids, and the # rows is the # of generations
-  fit.df <- data.frame(matrix(ncol=length(qtl)+4, nrow=0))
+  fit.df <- data.frame(matrix(ncol=length(qtl)+5, nrow=0))
   colnames(fit.df) <- c("gen", "fitness", "traitValA", "traitValB", qtl)
   
   for (gen in 1:n.gens) {
@@ -61,14 +62,15 @@ for (p in 1:length(pops)) {
       }
       # At each stage, select the top individuals according to how close each 
       # is from the fitness optimum
-      meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
+      meanFitness <- mean(fitFunc(pheno(pop)))
       # Calculate selection ratio
       selRat <- selectionRatio(meanFitness)
       newRow <- data.frame(gen=gen,
                            fitness=meanFitness,
                            traitValA=meanP(pop)[1],
-                           traitValB=meanP(pop)[2])
-      pop <- selectCross(pop, trait=threeTraitFitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
+                           traitValB=meanP(pop)[2],
+                           yieldPotential=meanP(pop)[3])
+      pop <- selectCross(pop, trait=fitFunc, nInd=nInd(pop)*selRat, nCrosses=nInd(pop))
       if (saveAllelePlots) {
         alleleFreq <- data.frame(matrix(0, nrow=1, ncol=length(qtl)))
         colnames(alleleFreq) <- colnames(qtlGeno)
@@ -88,9 +90,9 @@ for (p in 1:length(pops)) {
             # Increment the order counter after this generation
             inc <- TRUE
             # Update the result dataframe
-            new_row <- data.frame(orderFixed=c(idx),
-                                  effectSize=c(qtlEff.df[id,1]))
-            eff_size.df <- rbind(eff_size.df, new_row)
+            newFixedAlleles <- data.frame(orderFixed=c(idx),
+                                          effectSize=c(qtlEff.df[id,1]))
+            fixedAlleles.df <- rbind(fixedAlleles.df, newFixedAlleles)
           }
         }
         # Join the new row with the newly calculated allele frequencies
@@ -131,11 +133,19 @@ for (p in 1:length(pops)) {
     
     fname <- file.path(subpop_dir, "adaptivewalk.html")
     htmlwidgets::saveWidget(as_widget(fig), fname)
+
+    g <- ggplot(fit.df, aes(x=gen, y=yieldPotential)) +
+      geom_line()
+    ggplot2::ggsave(filename = "yieldPotential.pdf",
+                    path=subpop_dir,
+                    device = "pdf",
+                    width=10,
+                    height=7)
   }
 
   if (saveAllelePlots) {
     # Make the dataframe tidy
-    freq.df <- fit.df[-c(2:4)]
+    freq.df <- fit.df[-c(2:5)]
     freq.df<- melt(freq.df, id="gen", variable.name="id", value.name="freq")
     
     # Add the qtl effect size data to the dataframe
@@ -166,8 +176,6 @@ for (p in 1:length(pops)) {
       scale_color_distiller(palette=colors_palette, direction=1, "Effect Size") +
       labs(x="Generation", y="Allele Frequency", title=paste0("Subpopulation ", p)) +
       theme
-    
-    
     ggplot2::ggsave(filename = "allelefrequencies.pdf",
                     path=subpop_dir,
                     device = "pdf",
@@ -175,6 +183,6 @@ for (p in 1:length(pops)) {
                     height=7)
   }
   
-  write.table(fit.df, file.path(subpop_dir, "fitness.csv"), col.names=TRUE, quote=FALSE, sep=",")
+  write.table(fit.df, file.path(subpop_dir, "fitness.csv"), col.names=NA, quote=FALSE, sep=",")
 }
 

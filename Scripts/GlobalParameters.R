@@ -24,12 +24,13 @@ n.allele <- 2 # This is the allele for which to track frequency over time
 normalDist <- TRUE # if true, uses a normal distribution for trait values. If false, uses a gamma distribution
 
 # YIELD
-n.yieldQtlPerChr <- 500 # No. QTL per chromosome for yield
-n.yieldVar <- 0.1 # Initial variance for yield
+n.yieldQtlPerChr <- 1000 # No. QTL per chromosome for yield
+n.yieldVar <- 1 # Initial variance for yield
 n.yieldH2 <- 0.1 # h2 for yield
-n.initYieldVal <- 0 # Starting mean value for yield
-n.yieldCor <- 0.1 # Correlation between yield and fitness
-n.yieldProp <- 0.1 # Proportion to use for the weighted average calculation of the selection index
+n.yieldH2Breeding <- 0.3 # h2 for yield at the breeding stage
+n.initYieldVal <- 1 # Starting mean value for yield
+n.yieldProp <- 0.01 # Proportion to use for the weighted average calculation of the selection index at the landrace stage
+n.yieldPropBreeding <- 0.5 # Proportion to use for the weighted average at the breeding stage
 
 # ADAPTIVE WALKS
 n.margin <- 0 # Populations will terminate their adaptive walks once they reach this fitness value
@@ -118,7 +119,7 @@ getParams <- function() {
     yieldVar=n.yieldVar,
     yieldH2=n.yieldH2,
     initYieldVal=n.initYieldVal,
-    yieldCor=n.yieldCor,
+    yieldPropBreeding=n.yieldPropBreeding,
     yieldProp=n.yieldProp
   )
   return (t(n.df))

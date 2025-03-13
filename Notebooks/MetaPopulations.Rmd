@@ -52,7 +52,6 @@ if (runLocal) {
   setwd("/pl/active/Morris_CSU/Ted_Monyak/BreedingSims")
   output_dir <- ("/scratch/alpine/c837220672@colostate.edu/Output")
 }
-
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 source("Functions/Fitness.R")
@@ -184,15 +183,24 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 dir.create(save_dir)
 
 source("Scripts/GlobalParameters.R")
+n.yieldVar <- 1
 source("Scripts/CreateFounderPop.R")
-eff_size.df <- data.frame(orderFixed=c(),
-                          effectSize=c())
+fixedAlleles.df <- data.frame(orderFixed=c(),
+                              effectSize=c())
+
+saveFitnessPlots <- TRUE
 saveAllelePlots <- TRUE
 saveQtlPlots <- TRUE
+saveTraitPlots <- TRUE
+
+# twoTraitFitFunc, threeTraitFitFunc or constantSlopeFitFunc
+fitFunc <- threeTraitFitFunc
+
+SP$setVarE(h2=c(n.h2,n.h2,n.yieldH2))
 source("Scripts/CreateIndependentPops.R")
 
 # Increase heritability for the breeding portion of the simuation
-SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding))
+SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding, n.yieldH2Breeding))
 # Create a biparental RIL family
 # pops is created in CreateIndependentPops
 res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=save_dir, inter=TRUE)
@@ -200,7 +208,6 @@ res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=save_dir, inter=TRUE)
 RIL <- res[-(1:2)]
 parentA <- res[1]
 parentB <- res[2]
-
 print(getSigQtl(RIL, parentA, parentB, save_dir))
 ```
 
@@ -213,16 +220,16 @@ dir.create(save_dir)
 source("Scripts/GlobalParameters.R")
 source("Scripts/CreateFounderPop.R")
 saveFitnessPlots <- TRUE
-n.yieldCor <- -1
-n.yieldProp <- 0.1
+#n.yieldCor <- -1
+#n.yieldProp <- 0.1
 
 w <- twoTraitFitFunc(pheno(founderPop[1]))
 pheno(founderPop[1])[3]
 
-w <- -0.08
-y <- -0.02
+#w <- -0.08
+#y <- -0.02
 
-w*y * n.yieldCor * -1
+#w*y * n.yieldCor * -1
 
 source("Scripts/CreateIndependentPops.R")
 cor(pheno(pop), pheno(pop))
