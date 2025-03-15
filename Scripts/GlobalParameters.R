@@ -16,7 +16,7 @@ randParams <- FALSE # If true, uses random parameters for heritability and initi
 # TRAITS
 n.qtlPerChr <- 2 # Number of qtl per chromosome, per trait
 n.h2 <- 0.1 # Narrow-sense heritability for each acquired trait for landrace adaptation
-n.h2Breeding <- 0.6 # Narrow-sense heriability for each acquired trait for breeding adaptation
+n.h2Breeding <- 0.8 # Narrow-sense heriability for each acquired trait for breeding adaptation
 n.initTraitVal <- 1 # Starting value for each of the two traits
 n.var <- 0.05 # Initial variance for each trait. This is used as the 'rate' parameter in a gamma distribution
 n.shape <- 1 # Initial shape for the gamma distribution for each trait
@@ -24,13 +24,12 @@ n.allele <- 2 # This is the allele for which to track frequency over time
 normalDist <- TRUE # if true, uses a normal distribution for trait values. If false, uses a gamma distribution
 
 # YIELD
-n.yieldQtlPerChr <- 1000 # No. QTL per chromosome for yield
+n.yieldQtlPerChr <- 50 # No. QTL per chromosome for yield
 n.yieldVar <- 1 # Initial variance for yield
-n.yieldH2 <- 0.1 # h2 for yield
+n.yieldH2 <- 0.05 # h2 for yield
 n.yieldH2Breeding <- 0.3 # h2 for yield at the breeding stage
-n.initYieldVal <- 1 # Starting mean value for yield
-n.yieldProp <- 0.01 # Proportion to use for the weighted average calculation of the selection index at the landrace stage
-n.yieldPropBreeding <- 0.5 # Proportion to use for the weighted average at the breeding stage
+n.initYieldVal <- 50 # Starting mean value for yield
+n.yieldProp <- 0.8 # Proportion to use for the weighted average calculation of the selection index at the breeding stage
 
 # ADAPTIVE WALKS
 n.margin <- 0 # Populations will terminate their adaptive walks once they reach this fitness value
@@ -50,14 +49,16 @@ n.RILFams <- 200 # number of RIL families to create
 n.indPerRILFam <- 4 # number of replicates in each RIL family
 
 # BREEDING
-n.landraces <- 20 # Initial number of individuals to select from each landraces to purify
-n.F2 <- 4000
-n.F3 <- 2000
-n.F4 <- 1000
-n.F5 <- 500
-n.F6 <- 250
-n.F7 <- 125
-n.F8 <- 50
+n.purelines <- 20 # Initial number of individuals to select from each landraces to purify
+n.F2 <- 1000
+n.F3 <- 500
+n.F4 <- 250
+n.F5 <- 125
+n.F6 <- 50
+n.F7 <- 25
+n.F8 <- 10
+n.breedingPopSize <- 200 # Population size for population improvement
+n.breedingGens <- 10 # number of generations for population improvement
 
 # QTL Mapping Parameters
 n.mappingMethod <- "hk" # One of 'hk' (Haley-Knott), 'em', 'imp' (imputation), or others. See ?scanone
@@ -107,7 +108,7 @@ getParams <- function() {
     errorProb=n.errorProb,
     step=n.step,
     cores=n.cores,
-    landraces=n.landraces,
+    purelines=n.purelines,
     F2=n.F2,
     F3=n.F3,
     F4=n.F4,
@@ -118,9 +119,11 @@ getParams <- function() {
     yieldQtlPerChr=n.yieldQtlPerChr,
     yieldVar=n.yieldVar,
     yieldH2=n.yieldH2,
+    yieldH2Breeding=n.yieldH2Breeding,
     initYieldVal=n.initYieldVal,
-    yieldPropBreeding=n.yieldPropBreeding,
-    yieldProp=n.yieldProp
+    yieldProp=n.yieldProp,
+    breedingPopSize=n.breedingPopSize,
+    breedingGens=n.breedingGens
   )
   return (t(n.df))
 }

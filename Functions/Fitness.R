@@ -25,18 +25,32 @@ constantSlopeFitFunc <- function(x) {
   return (res)
 }
 
+# Calculates fitness as a realized yield, as measured by the yield potential
+# adjusted for the distance from optimal values for the 2 acquired traits
+# w = -(x^2) + -(y^2)
+# Return: (1-abs(w) * z)
+landraceFitFunc <- function(x) {
+  w <- -((x[,1])^2) - ((x[,2])^2)
+
+  # Determine realized yield so that it is penalized by a lower fitness (as determined by traits A and B)
+  realizedYield <- (1-abs(w)) * x[,3]
+  #print(paste0("W: ", w, " P: ", x[,3], " Y: ", realizedYield))
+  return (realizedYield)
+}
+
 # Calculates fitness as a weighted average between fitness of the two acquired traits
 # and yield
 # w = -(x^2) + -(y^2)
+# yieldPotential = (1-abs(w) * z)
 # Return: w*(1-yieldProp) + yield*yieldProp
-threeTraitFitFunc <- function(x, yieldProp=n.yieldProp) {
+breedingFitFunc <- function(x, yieldProp=n.yieldProp) {
   w <- -((x[,1])^2) - ((x[,2])^2)
-
+  
   # Determine yieldPotential so that it is negatively penalized by a lower fitness (as determined by traits A and B)
-  yieldPotential <- (1-abs(w)) * x[,3]
+  realizedYield <- (1-abs(w)) * x[,3]
   
   # Return a weighted average of fitness and yield
-  return (w*(1-yieldProp) + yieldPotential*yieldProp)
+  return (w*(1-yieldProp) + realizedYield*yieldProp)
 }
 
 # Calculates fitness based on an optimum value of zero for each trait

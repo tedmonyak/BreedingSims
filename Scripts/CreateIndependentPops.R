@@ -62,7 +62,7 @@ for (p in 1:length(pops)) {
       }
       # At each stage, select the top individuals according to how close each 
       # is from the fitness optimum
-      meanFitness <- mean(fitFunc(pheno(pop)))
+      meanFitness <- mean(twoTraitFitFunc(pheno(pop)))
       # Calculate selection ratio
       selRat <- selectionRatio(meanFitness)
       newRow <- data.frame(gen=gen,

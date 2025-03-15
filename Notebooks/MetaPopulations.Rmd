@@ -183,7 +183,7 @@ save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
 dir.create(save_dir)
 
 source("Scripts/GlobalParameters.R")
-n.yieldVar <- 1
+n.yieldVar <- 50
 source("Scripts/CreateFounderPop.R")
 fixedAlleles.df <- data.frame(orderFixed=c(),
                               effectSize=c())
@@ -193,51 +193,38 @@ saveAllelePlots <- TRUE
 saveQtlPlots <- TRUE
 saveTraitPlots <- TRUE
 
-# twoTraitFitFunc, threeTraitFitFunc or constantSlopeFitFunc
-fitFunc <- threeTraitFitFunc
-
+# twoTraitFitFunc, landraceFitFunc or constantSlopeFitFunc
+fitFunc <- landraceFitFunc
 SP$setVarE(h2=c(n.h2,n.h2,n.yieldH2))
 source("Scripts/CreateIndependentPops.R")
 
+# Update to use the breeding fitness function
+fitFunc <- breedingFitFunc
 # Increase heritability for the breeding portion of the simuation
 SP$setVarE(h2=c(n.h2Breeding, n.h2Breeding, n.yieldH2Breeding))
 # Create a biparental RIL family
 # pops is created in CreateIndependentPops
-res <- createRIL(popA=pops[[1]], popB=pops[[2]], save_dir=save_dir, inter=TRUE)
+
+popA <- pops[[1]]
+popB <- pops[[2]]
+# Create a cross-population RIL
+inter <- createRIL(popA=popA, popB=popB, save_dir=save_dir, inter=TRUE)
 # Parents A and B are the first two individuals in the result population
-RIL <- res[-(1:2)]
-parentA <- res[1]
-parentB <- res[2]
-print(getSigQtl(RIL, parentA, parentB, save_dir))
-```
+RIL_inter <- inter[-(1:2)]
+parentA <- inter[1]
+parentB <- inter[2]
+print(getSigQtl(RIL_inter, parentA, parentB, save_dir))
 
-```{r}
-save_dir <- file.path(output_dir, "Yield")
-if (!dir.exists(save_dir)) dir.create(save_dir)
-save_dir <- file.path(save_dir, format(Sys.time(), "%F_%H_%M_%S"))
-dir.create(save_dir)
+# Create an intra-population RIL
+intra <- createRIL(popA=popA, popB=popB, save_dir=save_dir, inter=FALSE)
+# Parents A and B are the first two individuals in the result population
+RIL_intra <- intra[-(1:2)]
+parentA <- intra[1]
+parentB <- intra[2]
+print(getSigQtl(RIL_intra, parentA, parentB, save_dir))
 
-source("Scripts/GlobalParameters.R")
-source("Scripts/CreateFounderPop.R")
-saveFitnessPlots <- TRUE
-#n.yieldCor <- -1
-#n.yieldProp <- 0.1
-
-w <- twoTraitFitFunc(pheno(founderPop[1]))
-pheno(founderPop[1])[3]
-
-#w <- -0.08
-#y <- -0.02
-
-#w*y * n.yieldCor * -1
-
-source("Scripts/CreateIndependentPops.R")
-cor(pheno(pop), pheno(pop))
-
-twoTraitFitFunc(pheno(pop[1]))
-threeTraitFitFunc(pheno(pop[1]))
-pheno(pop[1])
-meanP(pop)
+RIL_inter <- populationImprovement(RIL_inter, save_dir=save_dir, pop_id = "Inter")
+RIL_intra <- populationImprovement(RIL_intra, save_dir=save_dir, pop_id = "Intra")
 ```
 
 Add effect sizes to LOD plots (work-in-progress)

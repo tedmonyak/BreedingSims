@@ -41,6 +41,7 @@ if (normalDist) {
   } else {
     SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
     SP$addTraitA(mean=n.initTraitVal, var=n.var, nQtlPerChr=n.qtlPerChr)
+    # Add a yield potential polygenic trait
     SP$addTraitA(mean=n.initYieldVal, var=n.yieldVar, nQtlPerChr=n.yieldQtlPerChr)
   }
 } else {

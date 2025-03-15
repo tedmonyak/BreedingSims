@@ -12,24 +12,9 @@
 # Returns: a population where the first two individuals are parentA and parentB,
 # and the rest is the RIL
 createRIL <- function(popA, popB, save_dir, inter=TRUE) {
-  print(paste0("Landrace variance: ", varG(popA)[3,3]))
-  print(paste0("Landrace yield: ", meanP(popA)[3]))
-  # Develop elite lines
+  # Develop purelines
   popA <- makePurelines(popA)
   popB <- makePurelines(popB)
-
-  #popA <- makeElite(popA)
-  #popB <- makeElite(popB)
-  
-  print(paste0("Pureline variance: ", varG(popA)[3,3]))
-  print(paste0("Pureline yield: ", meanP(popA)[3]))
-  
-  # Boost yield potential
-  popA <- improveVarieties(popA)
-  popB <- improveVarieties(popB)
-
-  print(paste0("Improved variance: ", varG(popA)[3,3]))
-  print(paste0("Improved yield: ", meanP(popA)[3]))
 
   # Select 2 random individuals from popA
   aIdx <- sample.int(nInd(popA),2)
@@ -182,14 +167,51 @@ createRIL <- function(popA, popB, save_dir, inter=TRUE) {
   return (c(parentA, parentB, RIL))
 }
 
+# Runs population improvement for n.breedingGens generations
+# pop: the initial population
+# save_dir: the directory to save the genetic gain chart
+# pop_id: the name of the population, for filename purposes
+# returns: the improved population
+populationImprovement <- function(pop, save_dir, pop_id) {
+  # Store the initial mean yield
+  yieldVals <- c(meanP(pop)[3])
+  # Iterate through n.breedingGens
+  for (gen in 1:n.breedingGens) {
+    # Change this to select based on genomic selection instead to compare
+    # Select the top n.purelines (using a 10% selection criteria)
+    pop <- selectCross(pop, trait=fitFunc, nInd=n.purelines, nCrosses=n.purelines*10)
+    yieldVals <- c(yieldVals, meanP(pop)[3])
+  }
+
+  # Create a line graph of the genetic gain
+  if (saveTraitPlots) {
+    yield.df <- data.frame(gen=c(1:(n.breedingGens+1)),
+                           yield=yieldVals)
+    g <- ggplot(yield.df, aes(x=gen, y=yield)) +
+      geom_line() +
+      labs(title=paste0("Genetic Gain ", pop_id), x="Generation", y="Mean Yield")
+    ggplot2::ggsave(filename = paste0("GeneticGain", pop_id, ".pdf"),
+                    path=save_dir,
+                    device = "pdf",
+                    width=10,
+                    height=7)
+  }
+
+  return (pop)
+}
+
+# Simulate the development of purelines
+# n.purelines are selected
 makePurelines <- function(landrace) {
-  n.purelines <- 20
   purelines <- selectInd(landrace, trait=fitFunc, nInd=n.purelines)
   # Purify each landrace by selfing it repeatedly
+  # Select the top progeny from each family at each stage
   for (f in 1:10) {
-    purelines <- self(purelines, nProgeny=10)
-    purelines <- selectInd(purelines, nInd=n.purelines)
+    purelines <- self(purelines, nProgeny=4)
+    purelines <- selectInd(purelines, trait=fitFunc, nInd=n.purelines)
   }
+  # Bulk the seeds, creating 10 progeny per lines
+  purelines <- self(purelines, nProgeny=10)
   return (purelines)
 }
 
@@ -197,6 +219,7 @@ makePurelines <- function(landrace) {
 # First, the top landrace individuals are purified
 # pop: the landrace
 # Returns: an F8 population that has undergone selection and inbreeding
+# NOT BEING USED RIGHT NOW
 makeElite <- function(pop) {
   purifiedLandraces <- selectInd(pop, trait=twoTraitFitFunc, nInd=n.landraces)
   # Purify each landrace by selfing it repeatedly
@@ -221,40 +244,6 @@ makeElite <- function(pop) {
   F8 <- self(F7)
   F8 <- selectInd(F8, trait=fitFunc, nInd=n.F8)
   return (F8)
-}
-
-improveVarieties <- function(purelines) {
-  n.P <- 8
-  n.F1 <- 128
-  n.F2 <- 1000
-  n.F3 <- 500
-  n.F4 <- 250
-  n.F5 <- 100
-  n.F6 <- 50
-  n.F7 <- 25
-  n.F8 <- 5
-  P <- selectInd(purelines, trait=fitFunc, nInd=n.P)
-  F1 <- randCross(P, nCrosses=64, nProgeny=ceiling(n.F1/n.P))
-  # Create enough F2s to select n.F2 to advance
-  F2 <- self(F1, nProgeny=ceiling(n.F2/n.F1))
-  F3 <- self(F2, nProgeny=ceiling(n.F3/n.F2))
-  F3 <- selectInd(F3, trait=fitFunc, nInd=n.F4, yieldProp=0.8)
-  F4 <- self(F3)
-  F4 <- selectInd(F4, trait=fitFunc, nInd=n.F5, yieldProp=0.8)
-  F5 <- self(F4)
-  F5 <- selectInd(F5, trait=fitFunc, nInd=n.F6, yieldProp=0.8)
-  F6 <- self(F5)
-  F6 <- selectInd(F6, trait=fitFunc, nInd=n.F7, yieldProp=0.8)
-  F7 <- self(F6)
-  F7 <- selectInd(F7, trait=fitFunc, nInd=n.F8, yieldProp=0.8)
-  F8 <- self(F7)
-  return (F8)
-  #n.breedingInd <- 200
-  #for (f in 1:10) {
-  #  pop <- selectCross(pop, trait=fitFunc, nInd=n.breedingInd*n.selProp, nCrosses=n.breedingInd, yieldProp=0.1)
-  #}
-  #pop <- selectInd(pop, trait=fitFunc, nInd=4)
-  #return (pop)
 }
 
 # Creates a nested association mapping (NAM) population, to be used for GWAS
